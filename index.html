@@ -4,16 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#2563eb">
+    <meta name="description" content="Sistema de Gestión de Reportes - Instrumentos. Diseñado por Eduardo Palacios.">
     <title>SISTEMA DE GESTION DE REPORTES - Instrumentos</title>
     
-    <!-- PWA Manifest -->
+    <!-- PWA -->
     <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjgwIiBmaWxsPSIjMjU2M2ViIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNjAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+TUk8L3RleHQ+PC9zdmc+">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Reportes M-INST">
+    <meta name="mobile-web-app-capable" content="yes">
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- jsPDF y html2canvas -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
@@ -26,7 +29,68 @@
         .input-modern:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); background-color: white; }
         .label-modern { font-weight: 600; font-size: 0.85rem; color: #374151; margin-bottom: 6px; display: block; }
         
-        /* Estilos para el PDF (Oculto en pantalla) */
+        /* Botón de micrófono */
+        .mic-btn {
+            position: absolute; top: 34px; right: 8px;
+            background: #3b82f6; color: white; border: none;
+            width: 36px; height: 36px; border-radius: 50%;
+            cursor: pointer; transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+        .mic-btn:hover { background: #2563eb; transform: scale(1.05); }
+        .mic-btn.grabando { background: #dc2626; animation: pulse-red 1.2s infinite; }
+        .mic-btn.grabando:hover { background: #b91c1c; }
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+        }
+        .relative-mic { position: relative; }
+        .relative-mic textarea { padding-right: 50px; }
+        
+        /* Canvas firma */
+        .firma-canvas {
+            border: 2px dashed #cbd5e1; border-radius: 8px;
+            background: white; cursor: crosshair;
+            width: 100%; height: 120px; touch-action: none;
+        }
+        .firma-container { position: relative; }
+        .btn-limpiar-firma {
+            position: absolute; top: 5px; right: 5px;
+            background: #ef4444; color: white;
+            border: none; border-radius: 6px; padding: 4px 10px;
+            font-size: 0.75rem; cursor: pointer;
+        }
+        
+        /* Barra flotante de guardado */
+        .save-indicator {
+            position: fixed; bottom: 20px; right: 20px;
+            background: #10b981; color: white;
+            padding: 10px 16px; border-radius: 25px;
+            font-size: 0.85rem; font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            opacity: 0; transition: opacity 0.3s;
+            z-index: 100; pointer-events: none;
+        }
+        .save-indicator.show { opacity: 1; }
+        
+        /* Banner instalar PWA */
+        .install-banner {
+            position: fixed; bottom: 20px; left: 20px; right: 20px;
+            background: linear-gradient(135deg, #2563eb, #1e40af);
+            color: white; padding: 15px 20px; border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+            display: none; align-items: center; justify-content: space-between;
+            z-index: 999; max-width: 500px; margin: auto;
+        }
+        .install-banner.show { display: flex; }
+        .install-banner button {
+            background: white; color: #2563eb;
+            border: none; padding: 8px 16px; border-radius: 8px;
+            font-weight: bold; cursor: pointer;
+        }
+        
+        /* PDF template */
         #pdf-template { 
             position: absolute; left: -9999px; top: 0; 
             width: 210mm; background: white; padding: 10mm; box-sizing: border-box;
@@ -34,13 +98,32 @@
         }
         .pdf-table { width: 100%; border-collapse: collapse; }
         .pdf-table td { border: 1px solid black; padding: 4px; vertical-align: top; }
-        .pdf-section-title { background-color: #e5e7eb; text-align: center; font-weight: bold; padding: 3px; border: 1px solid black; border-bottom: none; }
-        .pdf-label { font-weight: bold; font-size: 9px; }
-        .pdf-text { min-height: 15px; display: block; }
-        .pdf-checkbox { display: inline-block; width: 12px; height: 12px; border: 1px solid black; margin-right: 5px; text-align: center; line-height: 12px; font-size: 9px; font-weight: bold; }
+        .pdf-section-title { background-color: #e5e7eb; text-align: center; font-weight: bold; padding: 4px; border: 1px solid black; border-bottom: none; }
+        .pdf-checkbox { 
+            display: inline-block; width: 13px; height: 13px; border: 1px solid black; 
+            text-align: center; line-height: 13px; font-size: 10px; font-weight: bold;
+            vertical-align: middle; margin-right: 3px;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
+
+    <!-- INDICADOR DE GUARDADO AUTOMÁTICO -->
+    <div class="save-indicator" id="saveIndicator">
+        <i class="fas fa-check-circle"></i> Guardado
+    </div>
+
+    <!-- BANNER INSTALAR PWA -->
+    <div class="install-banner" id="installBanner">
+        <div>
+            <div style="font-weight: bold;">📱 Instalar App</div>
+            <div style="font-size: 0.8rem; opacity: 0.9;">Úsala como app nativa en tu celular</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button onclick="instalarPWA()" style="background: white; color: #2563eb;">Instalar</button>
+            <button onclick="cerrarBanner()" style="background: transparent; color: white; padding: 8px;">✕</button>
+        </div>
+    </div>
 
     <!-- INTERFAZ DE USUARIO -->
     <div class="max-w-4xl mx-auto">
@@ -69,12 +152,7 @@
                         <label class="label-modern">Planta</label>
                         <select id="planta" class="input-modern">
                             <option value="">Seleccione una planta...</option>
-                            <option value="Laboratorio Quimico0">Laboratorio Quimico</option>
-                            <option value="Muelle 1">Muelle 1</option>
-                            <option value="Bodega 1">Bodega 1</option>
-                            <option value="Bodega 5">Bodega 5</option>
                             <option value="Planta 0">Planta 0</option>
-                            <option value="Clarificacion">Clarificacion</option>
                             <option value="Planta 1">Planta 1</option>
                             <option value="Planta 8">Planta 8</option>
                             <option value="Planta 11">Planta 11</option>
@@ -82,10 +160,6 @@
                             <option value="Planta 14">Planta 14</option>
                             <option value="Planta 15">Planta 15</option>
                             <option value="NPK">NPK</option>
-                            <option value="Planta 18">Planta 18</option>
-                            <option value="Simples y mezclas">Simples y mezclas</option>
-                            <option value="Planta 19">Planta 19</option>
-                            <option value="Planta 19S">Planta 19S</option>
                             <option value="Planta 20">Planta 20</option>
                             <option value="Otra">Otra</option>
                         </select>
@@ -138,25 +212,40 @@
             <div class="card">
                 <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-tools text-blue-500 mr-2"></i>Descripción del Trabajo</h2>
                 <div class="space-y-4">
-                    <div>
+                    <div class="relative-mic">
                         <label class="label-modern">Causa de la Intervención / Síntoma Presentado</label>
                         <textarea id="causa" class="input-modern" rows="2"></textarea>
+                        <button type="button" class="mic-btn" onclick="dictar('causa', this)" title="Dictar por voz">
+                            <i class="fas fa-microphone"></i>
+                        </button>
                     </div>
-                    <div>
+                    <div class="relative-mic">
                         <label class="label-modern">Estado en que se encontraron las Partes / Componentes</label>
                         <textarea id="estado" class="input-modern" rows="2"></textarea>
+                        <button type="button" class="mic-btn" onclick="dictar('estado', this)" title="Dictar por voz">
+                            <i class="fas fa-microphone"></i>
+                        </button>
                     </div>
-                    <div>
+                    <div class="relative-mic">
                         <label class="label-modern">Diagnóstico / Causa</label>
                         <textarea id="diagnostico" class="input-modern" rows="2"></textarea>
+                        <button type="button" class="mic-btn" onclick="dictar('diagnostico', this)" title="Dictar por voz">
+                            <i class="fas fa-microphone"></i>
+                        </button>
                     </div>
-                    <div>
+                    <div class="relative-mic">
                         <label class="label-modern">Trabajos Ejecutados</label>
                         <textarea id="trabajos" class="input-modern" rows="3"></textarea>
+                        <button type="button" class="mic-btn" onclick="dictar('trabajos', this)" title="Dictar por voz">
+                            <i class="fas fa-microphone"></i>
+                        </button>
                     </div>
-                    <div>
+                    <div class="relative-mic">
                         <label class="label-modern">Repuestos Utilizados</label>
                         <textarea id="repuestos" class="input-modern" rows="2"></textarea>
+                        <button type="button" class="mic-btn" onclick="dictar('repuestos', this)" title="Dictar por voz">
+                            <i class="fas fa-microphone"></i>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -181,22 +270,34 @@
                     </div>
                 </div>
                 <div class="space-y-4">
-                    <div>
+                    <div class="relative-mic">
                         <label class="label-modern">Supervisor de Operación que recibió el trabajo</label>
                         <input type="text" id="supervisorOp" class="input-modern" placeholder="Nombre del supervisor">
+                        <button type="button" class="mic-btn" onclick="dictar('supervisorOp', this)" title="Dictar por voz">
+                            <i class="fas fa-microphone"></i>
+                        </button>
                     </div>
-                    <div>
+                    <div class="relative-mic">
                         <label class="label-modern">Observaciones Generales</label>
                         <textarea id="observaciones" class="input-modern" rows="2"></textarea>
+                        <button type="button" class="mic-btn" onclick="dictar('observaciones', this)" title="Dictar por voz">
+                            <i class="fas fa-microphone"></i>
+                        </button>
                     </div>
+                    
+                    <!-- FIRMAS DIGITALES -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
+                        <div class="firma-container">
                             <label class="label-modern">Firma del Técnico de Mantenimiento</label>
-                            <input type="text" id="firmaTecnico" class="input-modern" placeholder="Nombre del técnico">
+                            <canvas id="firmaTecnico" class="firma-canvas"></canvas>
+                            <button type="button" class="btn-limpiar-firma" onclick="limpiarFirma('firmaTecnico')">Limpiar</button>
+                            <input type="text" id="nombreTecnico" class="input-modern mt-2" placeholder="Nombre del técnico">
                         </div>
-                        <div>
+                        <div class="firma-container">
                             <label class="label-modern">Firma del Supervisor de Mantenimiento</label>
-                            <input type="text" id="firmaSupervisor" class="input-modern" placeholder="Nombre del supervisor">
+                            <canvas id="firmaSupervisor" class="firma-canvas"></canvas>
+                            <button type="button" class="btn-limpiar-firma" onclick="limpiarFirma('firmaSupervisor')">Limpiar</button>
+                            <input type="text" id="nombreSupervisor" class="input-modern mt-2" placeholder="Nombre del supervisor">
                         </div>
                     </div>
                 </div>
@@ -208,16 +309,19 @@
                 <div class="border-2 border-dashed border-blue-300 rounded-lg p-6 text-center bg-blue-50 hover:bg-blue-100 transition cursor-pointer" onclick="document.getElementById('photoInput').click()">
                     <i class="fas fa-cloud-upload-alt text-4xl text-blue-400 mb-2"></i>
                     <p class="text-blue-600 font-semibold">Haz clic para tomar foto o subir imágenes</p>
-                    <p class="text-xs text-gray-500">Formatos: JPG, PNG.</p>
+                    <p class="text-xs text-gray-500">Se comprimen automáticamente para ahorrar espacio.</p>
                 </div>
                 <input type="file" id="photoInput" accept="image/*" capture="environment" multiple class="hidden">
                 <div id="photoGrid" class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4"></div>
             </div>
 
-            <!-- Botón Generar PDF -->
-            <div class="text-center mt-8 mb-12">
-                <button type="button" onclick="generarReportePDF()" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white text-lg font-bold py-4 px-12 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition transform duration-200">
+            <!-- Botones de acción -->
+            <div class="text-center mt-8 mb-12 flex flex-wrap justify-center gap-3">
+                <button type="button" onclick="generarReportePDF()" class="bg-gradient-to-r from-blue-600 to-blue-800 text-white text-lg font-bold py-4 px-8 rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition transform duration-200">
                     <i class="fas fa-file-pdf mr-2"></i> GENERAR REPORTE PDF
+                </button>
+                <button type="button" onclick="limpiarFormulario()" class="bg-gray-200 text-gray-700 text-lg font-bold py-4 px-8 rounded-full shadow hover:bg-gray-300 transition">
+                    <i class="fas fa-eraser mr-2"></i> LIMPIAR
                 </button>
             </div>
         </form>
@@ -227,123 +331,407 @@
     <div id="pdf-template">
         <table class="pdf-table">
             <tr>
-                <td rowspan="2" style="width: 40%; text-align: center; vertical-align: middle;">
-                    <div style="font-weight: bold; font-size: 12px;">REPORTE DE EJECUCIÓN</div>
-                    <div style="font-weight: bold; font-size: 12px;">GERENCIA DE MANTENIMIENTO</div>
+                <td rowspan="2" style="width: 42%; text-align: center; vertical-align: middle; padding: 8px 4px;">
+                    <div style="font-weight: bold; font-size: 12px; line-height: 1.4;">REPORTE DE EJECUCIÓN</div>
+                    <div style="font-weight: bold; font-size: 12px; line-height: 1.4;">GERENCIA DE MANTENIMIENTO</div>
                 </td>
-                <td style="width: 35%;">
-                    <span class="pdf-label">ESPECIALIDAD:</span> M-INST<br>
-                    <span class="pdf-label">GRUPO:</span> Grupo 1
+                <td style="width: 33%; padding: 5px; vertical-align: top;">
+                    <div style="font-size: 10px;"><span style="font-weight: bold;">ESPECIALIDAD:</span> M-INST</div>
+                    <div style="font-size: 10px; margin-top: 2px;"><span style="font-weight: bold;">GRUPO:</span> Grupo 1</div>
                 </td>
-                <td style="width: 25%;">
-                    <span class="pdf-label">AVISO:</span> <span id="pdf_aviso"></span><br>
-                    <span class="pdf-label">ORDEN DE TRABAJO:</span> <span id="pdf_orden"></span>
+                <td rowspan="2" style="width: 25%; padding: 5px; vertical-align: top;">
+                    <div style="font-size: 10px; margin-bottom: 4px;"><span style="font-weight: bold;">AVISO:</span> <span id="pdf_aviso"></span></div>
+                    <div style="font-size: 10px; margin-top: 4px;"><span style="font-weight: bold;">ORDEN DE TRABAJO:</span> <span id="pdf_orden"></span></div>
                 </td>
             </tr>
             <tr>
-                <td colspan="2">
-                    <span class="pdf-label">PLANTA:</span> <span id="pdf_planta"></span> &nbsp;&nbsp; 
-                    <span class="pdf-label">TAG:</span> <span id="pdf_tag"></span><br>
-                    <span class="pdf-label">DESCRIPCIÓN:</span> <span id="pdf_descripcion"></span>
+                <td style="padding: 5px; vertical-align: top;">
+                    <div style="font-size: 10px;"><span style="font-weight: bold;">PLANTA:</span> <span id="pdf_planta"></span> &nbsp; <span style="font-weight: bold;">TAG:</span> <span id="pdf_tag"></span></div>
+                    <div style="font-size: 10px; margin-top: 2px;"><span style="font-weight: bold;">DESCRIPCIÓN:</span> <span id="pdf_descripcion"></span></div>
                 </td>
             </tr>
         </table>
 
-        <div class="pdf-section-title" style="margin-top: 5px;">INFORMACIÓN DE TIEMPO</div>
+        <div class="pdf-section-title">INFORMACIÓN DE TIEMPO</div>
         <table class="pdf-table">
             <tr>
-                <td style="width: 33%; text-align: center; font-weight: bold;">Fecha y Hora de Salida de Servicio</td>
-                <td style="width: 33%; text-align: center; font-weight: bold;">Fecha y Hora de Inicio de Mantenimiento</td>
-                <td style="width: 34%; text-align: center; font-weight: bold;">Fecha y Hora de Entrega a Procesos</td>
+                <td style="width: 33%; text-align: center; font-weight: bold; padding: 4px;">Fecha y Hora de Salida de Servicio</td>
+                <td style="width: 33%; text-align: center; font-weight: bold; padding: 4px;">Fecha y Hora de Inicio de Mantenimiento</td>
+                <td style="width: 34%; text-align: center; font-weight: bold; padding: 4px;">Fecha y Hora de Entrega a Procesos</td>
             </tr>
             <tr>
-                <td style="text-align: center;"><span id="pdf_salida"></span></td>
-                <td style="text-align: center;"><span id="pdf_inicio"></span></td>
-                <td style="text-align: center;"><span id="pdf_entrega"></span></td>
+                <td style="text-align: center; padding: 6px; font-size: 10px;"><span id="pdf_salida"></span></td>
+                <td style="text-align: center; padding: 6px; font-size: 10px;"><span id="pdf_inicio"></span></td>
+                <td style="text-align: center; padding: 6px; font-size: 10px;"><span id="pdf_entrega"></span></td>
             </tr>
             <tr>
-                <td colspan="2" style="text-align: center; font-weight: bold;">Tiempo Total fuera de servicio: <span id="pdf_total_fuera"></span> HH:MM</td>
-                <td style="text-align: center; font-weight: bold;">Tiempo Neto de Mantenimiento: <span id="pdf_total_neto"></span> HH:MM</td>
+                <td colspan="2" style="text-align: center; font-weight: bold; padding: 4px; font-size: 10px;">
+                    Tiempo Total fuera de servicio: <span id="pdf_total_fuera"></span> HH:MM
+                </td>
+                <td style="text-align: center; font-weight: bold; padding: 4px; font-size: 10px;">
+                    Tiempo Neto de Mantenimiento: <span id="pdf_total_neto"></span> HH:MM
+                </td>
             </tr>
         </table>
-        <div style="border: 1px solid black; border-top: none; padding: 4px;">
-            <span class="pdf-label">Observaciones de Tiempo:</span> <span id="pdf_obs_tiempo"></span>
+        <div style="border: 1px solid black; border-top: none; padding: 5px; font-size: 10px;">
+            <span style="font-weight: bold;">Observaciones de Tiempo:</span> <span id="pdf_obs_tiempo"></span>
         </div>
 
         <div class="pdf-section-title" style="margin-top: 5px;">DESCRIPCIÓN DEL TRABAJO (Favor llenar siempre la información solicitada)</div>
         <table class="pdf-table">
-            <tr><td style="height: 30px;">
-                <span class="pdf-label">Causa de la Intervención / Síntoma Presentado:</span><br>
-                <span id="pdf_causa" class="pdf-text"></span>
+            <tr><td style="padding: 5px; height: 32px; vertical-align: top;">
+                <div style="font-weight: bold; font-size: 10px;">Causa de la Intervención / Síntoma Presentado:</div>
+                <div style="font-size: 10px; margin-top: 3px;" id="pdf_causa"></div>
             </td></tr>
-            <tr><td style="height: 30px;">
-                <span class="pdf-label">Descripción del Estado en que se encontraron las Partes / Componentes:</span><br>
-                <span id="pdf_estado" class="pdf-text"></span>
+            <tr><td style="padding: 5px; height: 32px; vertical-align: top;">
+                <div style="font-weight: bold; font-size: 10px;">Descripción del Estado en que se encontraron las Partes / Componentes:</div>
+                <div style="font-size: 10px; margin-top: 3px;" id="pdf_estado"></div>
             </td></tr>
-            <tr><td style="height: 30px;">
-                <span class="pdf-label">Diagnostico/Causa:</span><br>
-                <span id="pdf_diagnostico" class="pdf-text"></span>
+            <tr><td style="padding: 5px; height: 32px; vertical-align: top;">
+                <div style="font-weight: bold; font-size: 10px;">Diagnostico/Causa:</div>
+                <div style="font-size: 10px; margin-top: 3px;" id="pdf_diagnostico"></div>
             </td></tr>
-            <tr><td style="height: 40px;">
-                <span class="pdf-label">Trabajos Ejecutados:</span><br>
-                <span id="pdf_trabajos" class="pdf-text"></span>
+            <tr><td style="padding: 5px; height: 45px; vertical-align: top;">
+                <div style="font-weight: bold; font-size: 10px;">Trabajos Ejecutados:</div>
+                <div style="font-size: 10px; margin-top: 3px;" id="pdf_trabajos"></div>
             </td></tr>
-            <tr><td style="height: 30px;">
-                <span class="pdf-label">Repuestos Utilizados:</span><br>
-                <span id="pdf_repuestos" class="pdf-text"></span>
+            <tr><td style="padding: 5px; height: 32px; vertical-align: top;">
+                <div style="font-weight: bold; font-size: 10px;">Repuestos Utilizados:</div>
+                <div style="font-size: 10px; margin-top: 3px;" id="pdf_repuestos"></div>
             </td></tr>
         </table>
 
         <table class="pdf-table">
             <tr>
-                <td style="width: 33%;">
-                    <span class="pdf-label">La Planta o Equipo Critico Salió de Servicio</span><br>
-                    <span class="pdf-checkbox" id="pdf_critico_si">X</span> SI &nbsp;&nbsp;
-                    <span class="pdf-checkbox" id="pdf_critico_no">X</span> NO
+                <td style="width: 33%; padding: 6px; vertical-align: top; font-size: 10px;">
+                    <div style="font-weight: bold; margin-bottom: 4px;">La Planta o Equipo Critico Salió de Servicio</div>
+                    <div><span class="pdf-checkbox" id="pdf_critico_si"></span> SI &nbsp;&nbsp; <span class="pdf-checkbox" id="pdf_critico_no"></span> NO</div>
                 </td>
-                <td style="width: 33%;">
-                    <span class="pdf-label">Requiere Análisis de Ingeniería</span><br>
-                    <span class="pdf-checkbox" id="pdf_analisis_si">X</span> SI &nbsp;&nbsp;
-                    <span class="pdf-checkbox" id="pdf_analisis_no">X</span> NO
+                <td style="width: 33%; padding: 6px; vertical-align: top; font-size: 10px;">
+                    <div style="font-weight: bold; margin-bottom: 4px;">Requiere Análisis de Ingeniería</div>
+                    <div><span class="pdf-checkbox" id="pdf_analisis_si"></span> SI &nbsp;&nbsp; <span class="pdf-checkbox" id="pdf_analisis_no"></span> NO</div>
                 </td>
-                <td style="width: 34%;">
-                    <span class="pdf-label">Supervisor de Operación que recibió el trabajo:</span><br>
-                    <span id="pdf_supervisor_op"></span>
+                <td style="width: 34%; padding: 6px; vertical-align: top; font-size: 10px;">
+                    <div style="font-weight: bold; margin-bottom: 4px;">Supervisor de Operación que recibió el trabajo:</div>
+                    <div id="pdf_supervisor_op"></div>
                 </td>
             </tr>
         </table>
 
         <table class="pdf-table">
+            <tr><td colspan="2" style="padding: 5px; height: 30px; vertical-align: top;">
+                <div style="font-weight: bold; font-size: 10px;">Observaciones Generales (Proceso/ Mantenimiento):</div>
+                <div style="font-size: 10px; margin-top: 3px;" id="pdf_observaciones"></div>
+            </td></tr>
             <tr>
-                <td colspan="2" style="height: 25px;">
-                    <span class="pdf-label">Observaciones Generales (Proceso/ Mantenimiento):</span><br>
-                    <span id="pdf_observaciones" class="pdf-text"></span>
+                <td style="width: 50%; height: 55px; vertical-align: bottom; padding: 5px;">
+                    <div style="font-weight: bold; font-size: 10px;">Firma del Técnico de Mantenimiento:</div>
+                    <img id="pdf_firma_tecnico_img" style="max-height: 40px; margin-top: 5px; display: none;">
+                    <div style="font-style: italic; font-size: 10px; margin-top: 5px;" id="pdf_nombre_tecnico"></div>
                 </td>
-            </tr>
-            <tr>
-                <td style="width: 50%; height: 40px; vertical-align: bottom;">
-                    <span class="pdf-label">Firma del Técnico de Mantenimiento:</span><br>
-                    <span id="pdf_firma_tecnico" style="font-style: italic;"></span>
-                </td>
-                <td style="width: 50%; height: 40px; vertical-align: bottom;">
-                    <span class="pdf-label">Firma del Supervisor de Mantenimiento:</span><br>
-                    <span id="pdf_firma_supervisor" style="font-style: italic;"></span>
+                <td style="width: 50%; height: 55px; vertical-align: bottom; padding: 5px;">
+                    <div style="font-weight: bold; font-size: 10px;">Firma del Supervisor de Mantenimiento:</div>
+                    <img id="pdf_firma_supervisor_img" style="max-height: 40px; margin-top: 5px; display: none;">
+                    <div style="font-style: italic; font-size: 10px; margin-top: 5px;" id="pdf_nombre_supervisor"></div>
                 </td>
             </tr>
         </table>
     </div>
 
     <script>
-        // --- Registro del Service Worker para PWA ---
+        // ============================================
+        // PWA: SERVICE WORKER Y DETECCIÓN DE INSTALACIÓN
+        // ============================================
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('sw.js')
-                    .then(registration => console.log('Service Worker registrado:', registration))
-                    .catch(error => console.log('Error al registrar Service Worker:', error));
+                    .then(reg => console.log('✅ Service Worker registrado'))
+                    .catch(err => console.log('❌ Error SW:', err));
             });
         }
 
-        // --- Lógica de Tiempos ---
+        let deferredPrompt = null;
+        const installBanner = document.getElementById('installBanner');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            // Mostrar banner si no está ya instalada y no se cerró antes
+            if (!localStorage.getItem('installBannerClosed')) {
+                setTimeout(() => installBanner.classList.add('show'), 2000);
+            }
+        });
+
+        function instalarPWA() {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+                if (choiceResult.outcome === 'accepted') {
+                    console.log('✅ Usuario aceptó instalar');
+                    installBanner.classList.remove('show');
+                }
+                deferredPrompt = null;
+            });
+        }
+
+        function cerrarBanner() {
+            installBanner.classList.remove('show');
+            localStorage.setItem('installBannerClosed', 'true');
+        }
+
+        // Detectar si ya está instalada (standalone)
+        if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true) {
+            installBanner.classList.remove('show');
+        }
+
+        // ============================================
+        // DICTADO POR VOZ
+        // ============================================
+        let recognition = null;
+        let campoActivo = null;
+
+        function dictar(campoId, btn) {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert('❌ Tu navegador no soporta dictado por voz.\n\nUsa Chrome en Android o Safari en iOS (14.5+).');
+                return;
+            }
+
+            // Si ya está grabando, detener
+            if (recognition) {
+                recognition.stop();
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.lang = 'es-CO';
+            recognition.continuous = false;
+            recognition.interimResults = true;
+            recognition.maxAlternatives = 1;
+
+            campoActivo = campoId;
+            const original = document.getElementById(campoId).value;
+
+            btn.classList.add('grabando');
+            btn.innerHTML = '<i class="fas fa-stop"></i>';
+
+            recognition.onresult = (event) => {
+                let transcripcion = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    transcripcion += event.results[i][0].transcript;
+                }
+                const textarea = document.getElementById(campoId);
+                textarea.value = (original ? original + ' ' : '') + transcripcion;
+            };
+
+            recognition.onerror = (event) => {
+                console.error('Error dictado:', event.error);
+                if (event.error === 'not-allowed') {
+                    alert('❌ Permiso de micrófono denegado. Habilítalo en la configuración del navegador.');
+                }
+            };
+
+            recognition.onend = () => {
+                btn.classList.remove('grabando');
+                btn.innerHTML = '<i class="fas fa-microphone"></i>';
+                recognition = null;
+                campoActivo = null;
+                guardarAuto();
+            };
+
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error('Error al iniciar reconocimiento:', e);
+            }
+        }
+
+        // ============================================
+        // FIRMAS DIGITALES CON CANVAS
+        // ============================================
+        const firmas = {};
+
+        function inicializarCanvas(id) {
+            const canvas = document.getElementById(id);
+            const ctx = canvas.getContext('2d');
+            
+            // Ajustar tamaño real del canvas
+            function resize() {
+                const rect = canvas.getBoundingClientRect();
+                canvas.width = rect.width * 2;
+                canvas.height = rect.height * 2;
+                ctx.scale(2, 2);
+                ctx.lineWidth = 2;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = '#1e3a8a';
+            }
+            resize();
+
+            let dibujando = false;
+            let lastX = 0, lastY = 0;
+
+            function getPos(e) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: (clientX - rect.left),
+                    y: (clientY - rect.top)
+                };
+            }
+
+            function start(e) {
+                e.preventDefault();
+                dibujando = true;
+                const pos = getPos(e);
+                lastX = pos.x;
+                lastY = pos.y;
+            }
+
+            function move(e) {
+                if (!dibujando) return;
+                e.preventDefault();
+                const pos = getPos(e);
+                ctx.beginPath();
+                ctx.moveTo(lastX, lastY);
+                ctx.lineTo(pos.x, pos.y);
+                ctx.stroke();
+                lastX = pos.x;
+                lastY = pos.y;
+            }
+
+            function end(e) {
+                if (dibujando) {
+                    dibujando = false;
+                    guardarAuto();
+                }
+            }
+
+            canvas.addEventListener('mousedown', start);
+            canvas.addEventListener('mousemove', move);
+            canvas.addEventListener('mouseup', end);
+            canvas.addEventListener('mouseleave', end);
+            canvas.addEventListener('touchstart', start, { passive: false });
+            canvas.addEventListener('touchmove', move, { passive: false });
+            canvas.addEventListener('touchend', end);
+
+            firmas[id] = { canvas, ctx };
+        }
+
+        function limpiarFirma(id) {
+            const canvas = document.getElementById(id);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            guardarAuto();
+        }
+
+        function obtenerFirmaBase64(id) {
+            const canvas = document.getElementById(id);
+            // Verificar si está en blanco
+            const blank = document.createElement('canvas');
+            blank.width = canvas.width;
+            blank.height = canvas.height;
+            if (canvas.toDataURL() === blank.toDataURL()) return null;
+            return canvas.toDataURL('image/png');
+        }
+
+        inicializarCanvas('firmaTecnico');
+        inicializarCanvas('firmaSupervisor');
+
+        // ============================================
+        // GUARDADO AUTOMÁTICO EN LOCALSTORAGE
+        // ============================================
+        const CAMPOS = ['aviso', 'orden', 'planta', 'tag', 'descripcion', 'salida', 'inicio', 'entrega',
+                        'obsTiempo', 'causa', 'estado', 'diagnostico', 'trabajos', 'repuestos',
+                        'supervisorOp', 'observaciones', 'nombreTecnico', 'nombreSupervisor'];
+
+        const saveIndicator = document.getElementById('saveIndicator');
+        let saveTimeout = null;
+
+        function guardarAuto() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                const datos = {};
+                CAMPOS.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) datos[id] = el.value;
+                });
+                // Radios
+                datos.critico = document.querySelector('input[name="critico"]:checked')?.value || 'NO';
+                datos.analisis = document.querySelector('input[name="analisis"]:checked')?.value || 'NO';
+                // Firmas
+                datos.firmaTecnico = obtenerFirmaBase64('firmaTecnico');
+                datos.firmaSupervisor = obtenerFirmaBase64('firmaSupervisor');
+                // Fotos (solo base64, ojo con el tamaño)
+                datos.fotos = fotosArray;
+
+                try {
+                    localStorage.setItem('reporteAutoSave', JSON.stringify(datos));
+                    mostrarIndicador();
+                } catch (e) {
+                    console.warn('⚠️ No se pudo guardar (posible exceso de cuota):', e);
+                }
+            }, 800);
+        }
+
+        function mostrarIndicador() {
+            saveIndicator.classList.add('show');
+            setTimeout(() => saveIndicator.classList.remove('show'), 1500);
+        }
+
+        function cargarAuto() {
+            try {
+                const guardado = localStorage.getItem('reporteAutoSave');
+                if (!guardado) return;
+                if (!confirm('📂 Se encontró un reporte sin terminar. ¿Deseas restaurarlo?')) {
+                    localStorage.removeItem('reporteAutoSave');
+                    return;
+                }
+                const datos = JSON.parse(guardado);
+                CAMPOS.forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el && datos[id] !== undefined) el.value = datos[id];
+                });
+                if (datos.critico) {
+                    document.querySelector(`input[name="critico"][value="${datos.critico}"]`).checked = true;
+                }
+                if (datos.analisis) {
+                    document.querySelector(`input[name="analisis"][value="${datos.analisis}"]`).checked = true;
+                }
+                // Restaurar firmas
+                if (datos.firmaTecnico) dibujarFirma('firmaTecnico', datos.firmaTecnico);
+                if (datos.firmaSupervisor) dibujarFirma('firmaSupervisor', datos.firmaSupervisor);
+                // Restaurar fotos
+                if (datos.fotos && Array.isArray(datos.fotos)) {
+                    fotosArray = datos.fotos;
+                    renderizarFotos();
+                }
+                calcularTiempos();
+            } catch (e) {
+                console.error('Error al cargar auto-save:', e);
+            }
+        }
+
+        function dibujarFirma(id, dataUrl) {
+            const canvas = document.getElementById(id);
+            const ctx = canvas.getContext('2d');
+            const img = new Image();
+            img.onload = () => ctx.drawImage(img, 0, 0, canvas.width / 2, canvas.height / 2);
+            img.src = dataUrl;
+        }
+
+        // Detectar cambios en todos los campos
+        document.querySelectorAll('input, textarea, select').forEach(el => {
+            el.addEventListener('input', guardarAuto);
+            el.addEventListener('change', guardarAuto);
+        });
+
+        // Cargar al inicio
+        window.addEventListener('load', cargarAuto);
+
+        // ============================================
+        // CÁLCULO DE TIEMPOS
+        // ============================================
         const inputsTiempo = ['salida', 'inicio', 'entrega'];
         inputsTiempo.forEach(id => {
             document.getElementById(id).addEventListener('change', calcularTiempos);
@@ -361,8 +749,8 @@
                 if (diffMs > 0) {
                     const diffHrs = Math.floor(diffMs / 3600000);
                     const diffMins = Math.floor((diffMs % 3600000) / 60000);
-                    const tiempoStr = `${String(diffHrs).padStart(2, '0')}:${String(diffMins).padStart(2, '0')}`;
-                    document.getElementById('displayTotalFuera').innerText = `${tiempoStr} HH:MM`;
+                    document.getElementById('displayTotalFuera').innerText = 
+                        `${String(diffHrs).padStart(2, '0')}:${String(diffMins).padStart(2, '0')} HH:MM`;
                 }
             }
 
@@ -373,29 +761,60 @@
                 if (diffMs > 0) {
                     const diffHrs = Math.floor(diffMs / 3600000);
                     const diffMins = Math.floor((diffMs % 3600000) / 60000);
-                    const tiempoStr = `${String(diffHrs).padStart(2, '0')}:${String(diffMins).padStart(2, '0')}`;
-                    document.getElementById('displayTotalNeto').innerText = `${tiempoStr} HH:MM`;
+                    document.getElementById('displayTotalNeto').innerText = 
+                        `${String(diffHrs).padStart(2, '0')}:${String(diffMins).padStart(2, '0')} HH:MM`;
                 }
             }
         }
 
-        // --- Lógica de Fotos ---
+        // ============================================
+        // COMPRESIÓN DE FOTOS
+        // ============================================
         let fotosArray = [];
         const photoInput = document.getElementById('photoInput');
         const photoGrid = document.getElementById('photoGrid');
 
-        photoInput.addEventListener('change', function(e) {
-            const files = e.target.files;
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    fotosArray.push(event.target.result);
+        photoInput.addEventListener('change', async function(e) {
+            const files = Array.from(e.target.files);
+            for (const file of files) {
+                try {
+                    const comprimida = await comprimirImagen(file, 1200, 0.7);
+                    fotosArray.push(comprimida);
                     renderizarFotos();
-                };
-                reader.readAsDataURL(file);
+                } catch (err) {
+                    console.error('Error comprimiendo:', err);
+                }
             }
+            photoInput.value = '';
+            guardarAuto();
         });
+
+        function comprimirImagen(file, maxAncho, calidad) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        let ancho = img.width;
+                        let alto = img.height;
+                        if (ancho > maxAncho) {
+                            alto = (maxAncho / ancho) * alto;
+                            ancho = maxAncho;
+                        }
+                        canvas.width = ancho;
+                        canvas.height = alto;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, ancho, alto);
+                        resolve(canvas.toDataURL('image/jpeg', calidad));
+                    };
+                    img.onerror = reject;
+                    img.src = e.target.result;
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
 
         function renderizarFotos() {
             photoGrid.innerHTML = '';
@@ -415,13 +834,16 @@
         function eliminarFoto(index) {
             fotosArray.splice(index, 1);
             renderizarFotos();
+            guardarAuto();
         }
 
-        // --- Generación del PDF ---
+        // ============================================
+        // GENERACIÓN DE PDF
+        // ============================================
         async function generarReportePDF() {
             const { jsPDF } = window.jspdf;
 
-            // 1. Transferir datos a la plantilla
+            // Transferir datos
             document.getElementById('pdf_aviso').innerText = document.getElementById('aviso').value || 'N/A';
             document.getElementById('pdf_orden').innerText = document.getElementById('orden').value || 'N/A';
             document.getElementById('pdf_planta').innerText = document.getElementById('planta').value || 'N/A';
@@ -457,15 +879,35 @@
 
             document.getElementById('pdf_supervisor_op').innerText = document.getElementById('supervisorOp').value || 'N/A';
             document.getElementById('pdf_observaciones').innerText = document.getElementById('observaciones').value || '.';
-            document.getElementById('pdf_firma_tecnico').innerText = document.getElementById('firmaTecnico').value || 'N/A';
-            document.getElementById('pdf_firma_supervisor').innerText = document.getElementById('firmaSupervisor').value || 'N/A';
 
-            // 2. Capturar plantilla
+            // Firmas
+            const firmaTec = obtenerFirmaBase64('firmaTecnico');
+            const firmaSup = obtenerFirmaBase64('firmaSupervisor');
+            
+            const imgTec = document.getElementById('pdf_firma_tecnico_img');
+            const imgSup = document.getElementById('pdf_firma_supervisor_img');
+            
+            if (firmaTec) {
+                imgTec.src = firmaTec;
+                imgTec.style.display = 'inline-block';
+            } else {
+                imgTec.style.display = 'none';
+            }
+            if (firmaSup) {
+                imgSup.src = firmaSup;
+                imgSup.style.display = 'inline-block';
+            } else {
+                imgSup.style.display = 'none';
+            }
+            
+            document.getElementById('pdf_nombre_tecnico').innerText = document.getElementById('nombreTecnico').value || '';
+            document.getElementById('pdf_nombre_supervisor').innerText = document.getElementById('nombreSupervisor').value || '';
+
+            // Capturar plantilla
             const template = document.getElementById('pdf-template');
             const canvas = await html2canvas(template, { scale: 2, useCORS: true });
             const imgData = canvas.toDataURL('image/png');
 
-            // 3. Crear PDF
             const doc = new jsPDF('p', 'mm', 'a4');
             const imgWidth = 210;
             const pageHeight = 297;
@@ -484,41 +926,72 @@
                 heightLeft -= pageHeight;
             }
 
-            // 4. Collage de Fotos
+            // Collage de fotos
             if (fotosArray.length > 0) {
                 doc.addPage();
-                doc.setFontSize(16);
+                doc.setFontSize(14);
+                doc.setFont("helvetica", "bold");
                 doc.text("EVIDENCIAS FOTOGRÁFICAS", 105, 15, { align: "center" });
                 
-                let x = 10;
+                doc.setDrawColor(37, 99, 235);
+                doc.setLineWidth(0.5);
+                doc.line(15, 18, 195, 18);
+                
+                let x = 15;
                 let y = 25;
-                const imgWidthFoto = 60;
-                const imgHeightFoto = 45;
-                const margin = 10;
+                const imgWidthFoto = 55;
+                const imgHeightFoto = 42;
+                const marginX = 10;
+                const marginY = 12;
                 const maxCols = 3;
                 let col = 0;
 
                 for (let i = 0; i < fotosArray.length; i++) {
                     if (col >= maxCols) {
                         col = 0;
-                        x = 10;
-                        y += imgHeightFoto + margin;
+                        x = 15;
+                        y += imgHeightFoto + marginY;
                     }
                     if (y + imgHeightFoto > 280) {
                         doc.addPage();
                         y = 20;
-                        x = 10;
+                        x = 15;
                         col = 0;
                     }
+                    doc.setDrawColor(200, 200, 200);
+                    doc.setLineWidth(0.3);
+                    doc.rect(x - 1, y - 1, imgWidthFoto + 2, imgHeightFoto + 2);
                     doc.addImage(fotosArray[i], 'JPEG', x, y, imgWidthFoto, imgHeightFoto);
-                    x += imgWidthFoto + margin;
+                    
+                    doc.setFontSize(8);
+                    doc.setFont("helvetica", "normal");
+                    doc.setTextColor(100, 100, 100);
+                    doc.text(`Foto ${i + 1}`, x + imgWidthFoto / 2, y + imgHeightFoto + 5, { align: "center" });
+                    
+                    x += imgWidthFoto + marginX;
                     col++;
                 }
             }
 
-            // 5. Guardar
             const tag = document.getElementById('tag').value || 'Equipo';
-            doc.save(`Reporte_Mantenimiento_${tag}.pdf`);
+            const fecha = new Date().toISOString().slice(0,10);
+            doc.save(`Reporte_${tag}_${fecha}.pdf`);
+        }
+
+        // ============================================
+        // LIMPIAR FORMULARIO
+        // ============================================
+        function limpiarFormulario() {
+            if (!confirm('⚠️ ¿Estás seguro de que quieres limpiar todo el formulario? Se perderán los datos no guardados.')) return;
+            
+            document.getElementById('captureForm').reset();
+            fotosArray = [];
+            renderizarFotos();
+            limpiarFirma('firmaTecnico');
+            limpiarFirma('firmaSupervisor');
+            document.getElementById('displayTotalFuera').innerText = '00:00 HH:MM';
+            document.getElementById('displayTotalNeto').innerText = '00:00 HH:MM';
+            localStorage.removeItem('reporteAutoSave');
         }
     </script>
 </body>
