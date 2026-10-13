@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reportes-instrumentos-v2';
+const CACHE_NAME = 'reportes-instrumentos-v3';
 const urlsToCache = [
   './',
   './index.html',
