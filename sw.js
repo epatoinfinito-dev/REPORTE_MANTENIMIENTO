@@ -1,47 +1,60 @@
 const CACHE_NAME = 'reportes-instrumentos-v2';
 const urlsToCache = [
+  './',
   './index.html',
-  './manifest.json',
-  'https://cdn.tailwindcss.com',
-  'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css',
-  'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
-  'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js'
+  './manifest.json'
 ];
 
-// Instalar el Service Worker y guardar en caché los archivos base
+// Instalar
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Archivos cacheados correctamente');
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then(cache => {
+      console.log('📦 Cacheando archivos base');
+      return cache.addAll(urlsToCache);
+    })
   );
 });
 
-// Interceptar peticiones para servir desde caché si no hay internet
-self.addEventListener('fetch', event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Devuelve el archivo de caché si existe, sino lo busca en la red
-        return response || fetch(event.request);
-      })
-  );
-});
-
-// Actualizar el caché cuando cambie la versión
+// Activar y limpiar cachés viejos
 self.addEventListener('activate', event => {
-  const cacheWhitelist = [CACHE_NAME];
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheWhitelist.indexOf(cacheName) === -1) {
+          if (cacheName !== CACHE_NAME) {
+            console.log('🗑️ Eliminando caché antigua:', cacheName);
             return caches.delete(cacheName);
           }
         })
       );
+    }).then(() => self.clients.claim())
+  );
+});
+
+// Fetch: cache-first con fallback a red
+self.addEventListener('fetch', event => {
+  if (event.request.method !== 'GET') return;
+
+  event.respondWith(
+    caches.match(event.request).then(response => {
+      if (response) {
+        return response;
+      }
+      return fetch(event.request).then(networkResponse => {
+        if (networkResponse && networkResponse.status === 200 && 
+            (event.request.url.includes('cdn') || event.request.url.includes('fonts'))) {
+          const responseClone = networkResponse.clone();
+          caches.open(CACHE_NAME).then(cache => {
+            cache.put(event.request, responseClone);
+          });
+        }
+        return networkResponse;
+      }).catch(() => {
+        if (event.request.destination === 'document') {
+          return caches.match('./index.html');
+        }
+      });
     })
   );
 });
