@@ -25,13 +25,5 @@
       "type": "image/svg+xml",
       "purpose": "maskable"
     }
-  ],
-  "shortcuts": [
-    {
-      "name": "Nuevo Reporte",
-      "short_name": "Nuevo",
-      "url": "./index.html",
-      "icons": [{ "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgcng9IjgwIiBmaWxsPSIjMjU2M2ViIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCIgZm9udC1zaXplPSIxNjAiIGZvbnQtd2VpZ2h0PSJib2xkIiBmaWxsPSJ3aGl0ZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSI+TUk8L3RleHQ+PC9zdmc+", "sizes": "512x512", "type": "image/svg+xml" }]
-    }
   ]
 }
