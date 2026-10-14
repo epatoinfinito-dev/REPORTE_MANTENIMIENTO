@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="description" content="Sistema de Gestión de Reportes - Instrumentos. Diseñado por Eduardo Palacios.">
     <title>SISTEMA DE GESTION DE REPORTES - Instrumentos</title>
     
@@ -20,12 +21,10 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } 
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser } 
             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp } 
             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-        
-        // ⚠️⚠️⚠️ REEMPLAZA ESTO CON TU CONFIGURACIÓN REAL DE FIREBASE ⚠️⚠️⚠️
         
         const firebaseConfig = {
             apiKey: "AIzaSyBV7haEesvQsHTt22FR7hG64KmNdjLDzhI",
@@ -43,7 +42,7 @@
         window.firebaseAuth = auth;
         window.firebaseDB = db;
         window.firebaseFns = {
-            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged,
+            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser,
             collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp
         };
         
@@ -83,18 +82,9 @@
         .relative-mic { position: relative; }
         .relative-mic textarea, .relative-mic input { padding-right: 50px; }
         
-        .firma-canvas {
-            border: 2px dashed #cbd5e1; border-radius: 8px;
-            background: white; cursor: crosshair;
-            width: 100%; height: 120px; touch-action: none;
-        }
+        .firma-canvas { border: 2px dashed #cbd5e1; border-radius: 8px; background: white; cursor: crosshair; width: 100%; height: 120px; touch-action: none; }
         .firma-container { position: relative; }
-        .btn-limpiar-firma {
-            position: absolute; top: 5px; right: 5px;
-            background: #ef4444; color: white;
-            border: none; border-radius: 6px; padding: 4px 10px;
-            font-size: 0.75rem; cursor: pointer;
-        }
+        .btn-limpiar-firma { position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; }
         
         #pdf-template { 
             position: absolute; left: -9999px; top: 0; 
@@ -117,13 +107,25 @@
         .rol-supervisor { background: #fef3c7; color: #92400e; }
         .rol-admin { background: #fee2e2; color: #991b1b; }
         
+        .tab-active { border-bottom: 3px solid #2563eb; color: #2563eb; font-weight: bold; }
+        .tab-inactive { color: #6b7280; }
+        
+        .stat-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .stat-number { font-size: 2rem; font-weight: bold; color: #2563eb; }
+        .stat-label { font-size: 0.75rem; color: #6b7280; text-transform: uppercase; font-weight: 600; }
+        
+        .user-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        .user-row:last-child { border-bottom: none; }
+        
         .hidden-view { display: none !important; }
+        
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; }
     </style>
 </head>
 <body>
 
 <!-- ============================================ -->
-<!-- VISTA 1: LOGIN                               -->
+<!-- VISTA LOGIN                                  -->
 <!-- ============================================ -->
 <div id="vistaLogin" class="min-h-screen flex items-center justify-center p-4">
     <div class="card" style="max-width: 400px; width: 100%;">
@@ -162,11 +164,11 @@
             <div class="space-y-3">
                 <div>
                     <label class="label-modern">Nombre completo</label>
-                    <input type="text" id="regNombre" class="input-modern" placeholder="Tu nombre">
+                    <input type="text" id="regNombre" class="input-modern">
                 </div>
                 <div>
                     <label class="label-modern">Correo</label>
-                    <input type="email" id="regEmail" class="input-modern" placeholder="tu@correo.com">
+                    <input type="email" id="regEmail" class="input-modern">
                 </div>
                 <div>
                     <label class="label-modern">Contraseña (mín. 6 caracteres)</label>
@@ -191,11 +193,11 @@
 </div>
 
 <!-- ============================================ -->
-<!-- VISTA 2: DASHBOARD                           -->
+<!-- VISTA DASHBOARD                              -->
 <!-- ============================================ -->
 <div id="vistaDashboard" class="hidden-view p-4 md:p-8 max-w-6xl mx-auto">
     
-    <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex items-center justify-between flex-wrap gap-3">
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-4 flex items-center justify-between flex-wrap gap-3">
         <div>
             <h1 class="text-xl font-bold text-gray-800">📋 Reportes de Mantenimiento</h1>
             <p class="text-sm text-gray-500">Instrumentos - M-INST</p>
@@ -212,63 +214,146 @@
         </div>
     </div>
     
-    <div class="mb-6 flex flex-wrap gap-3 items-center justify-between">
-        <button onclick="abrirFormularioNuevo()" class="btn-primary">
-            <i class="fas fa-plus mr-2"></i> Nuevo Reporte
-        </button>
-        <div class="text-sm text-gray-600">
-            <span id="contadorReportes">0</span> reportes encontrados
-        </div>
-    </div>
-    
-    <div class="card">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
-            <div class="md:col-span-2">
-                <label class="label-modern"><i class="fas fa-search"></i> Búsqueda inteligente</label>
-                <input type="text" id="busquedaGlobal" class="input-modern" placeholder="TAG, aviso, causa, técnico..." oninput="aplicarFiltros()">
-            </div>
-            <div>
-                <label class="label-modern">Planta</label>
-                <select id="filtroPlanta" class="input-modern" onchange="aplicarFiltros()">
-                    <option value="">Todas</option>
-                    <option value="Planta 0">Planta 0</option>
-                    <option value="Planta 1">Planta 1</option>
-                    <option value="Planta 8">Planta 8</option>
-                    <option value="Planta 11">Planta 11</option>
-                    <option value="Planta 12">Planta 12</option>
-                    <option value="Planta 14">Planta 14</option>
-                    <option value="Planta 15">Planta 15</option>
-                    <option value="NPK">NPK</option>
-                    <option value="Planta 20">Planta 20</option>
-                    <option value="Otra">Otra</option>
-                </select>
-            </div>
-            <div>
-                <label class="label-modern">Fecha</label>
-                <select id="filtroFecha" class="input-modern" onchange="aplicarFiltros()">
-                    <option value="">Todas</option>
-                    <option value="hoy">Hoy</option>
-                    <option value="semana">Últimos 7 días</option>
-                    <option value="mes">Últimos 30 días</option>
-                </select>
-            </div>
-        </div>
-        <div class="mt-3 flex justify-end">
-            <button onclick="limpiarFiltros()" class="text-sm text-gray-500 hover:text-gray-700">
-                <i class="fas fa-times"></i> Limpiar filtros
+    <!-- Tabs de navegación -->
+    <div class="bg-white rounded-xl shadow-sm mb-6 overflow-x-auto">
+        <div class="flex border-b">
+            <button onclick="cambiarTab('reportes')" id="tabReportes" class="px-6 py-3 whitespace-nowrap tab-active">
+                <i class="fas fa-list mr-2"></i> Reportes
+            </button>
+            <button onclick="cambiarTab('estadisticas')" id="tabEstadisticas" class="px-6 py-3 whitespace-nowrap tab-inactive">
+                <i class="fas fa-chart-bar mr-2"></i> Estadísticas
+            </button>
+            <button onclick="cambiarTab('usuarios')" id="tabUsuarios" class="px-6 py-3 whitespace-nowrap tab-inactive hidden-view">
+                <i class="fas fa-users mr-2"></i> Usuarios
             </button>
         </div>
     </div>
     
-    <div id="listaReportes" class="space-y-3"></div>
-    <div id="sinReportes" class="text-center py-12 text-gray-400 hidden-view">
-        <i class="fas fa-inbox text-5xl mb-3"></i>
-        <p>No hay reportes que coincidan con la búsqueda</p>
+    <!-- TAB: REPORTES -->
+    <div id="contentReportes">
+        <div class="mb-6 flex flex-wrap gap-3 items-center justify-between">
+            <button onclick="abrirFormularioNuevo()" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i> Nuevo Reporte
+            </button>
+            <div class="text-sm text-gray-600">
+                <span id="contadorReportes">0</span> reportes encontrados
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 class="font-bold text-gray-700 mb-3"><i class="fas fa-filter"></i> Búsqueda Avanzada</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="md:col-span-3">
+                    <label class="label-modern">Búsqueda por texto</label>
+                    <input type="text" id="busquedaGlobal" class="input-modern" placeholder="TAG, aviso, causa, técnico..." oninput="aplicarFiltros()">
+                </div>
+                <div>
+                    <label class="label-modern">Planta</label>
+                    <select id="filtroPlanta" class="input-modern" onchange="aplicarFiltros()">
+                        <option value="">Todas</option>
+                        <option value="Planta 0">Planta 0</option>
+                        <option value="Planta 1">Planta 1</option>
+                        <option value="Planta 8">Planta 8</option>
+                        <option value="Planta 11">Planta 11</option>
+                        <option value="Planta 12">Planta 12</option>
+                        <option value="Planta 14">Planta 14</option>
+                        <option value="Planta 15">Planta 15</option>
+                        <option value="NPK">NPK</option>
+                        <option value="Planta 20">Planta 20</option>
+                        <option value="Otra">Otra</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-modern">Técnico</label>
+                    <select id="filtroTecnico" class="input-modern" onchange="aplicarFiltros()">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-modern">Criticidad</label>
+                    <select id="filtroCritico" class="input-modern" onchange="aplicarFiltros()">
+                        <option value="">Todos</option>
+                        <option value="SI">Solo críticos</option>
+                        <option value="NO">No críticos</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="label-modern">Fecha desde</label>
+                    <input type="date" id="filtroFechaDesde" class="input-modern" onchange="aplicarFiltros()">
+                </div>
+                <div>
+                    <label class="label-modern">Fecha hasta</label>
+                    <input type="date" id="filtroFechaHasta" class="input-modern" onchange="aplicarFiltros()">
+                </div>
+                <div class="flex items-end gap-2">
+                    <button onclick="limpiarFiltros()" class="btn-secondary text-sm flex-1">
+                        <i class="fas fa-times"></i> Limpiar
+                    </button>
+                    <button onclick="exportarCSV()" class="btn-success text-sm flex-1">
+                        <i class="fas fa-file-csv"></i> CSV
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <div id="listaReportes" class="space-y-3"></div>
+        <div id="sinReportes" class="text-center py-12 text-gray-400 hidden-view">
+            <i class="fas fa-inbox text-5xl mb-3"></i>
+            <p>No hay reportes que coincidan con la búsqueda</p>
+        </div>
+    </div>
+    
+    <!-- TAB: ESTADÍSTICAS -->
+    <div id="contentEstadisticas" class="hidden-view">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+            <div class="stat-card">
+                <div class="stat-number" id="statTotalReportes">0</div>
+                <div class="stat-label">Total Reportes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number text-red-600" id="statCriticos">0</div>
+                <div class="stat-label">Equipos Críticos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number text-green-600" id="statMesActual">0</div>
+                <div class="stat-label">Este Mes</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number text-orange-600" id="statAnalisis">0</div>
+                <div class="stat-label">Requieren Análisis</div>
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 class="font-bold text-gray-700 mb-3">Reportes por Planta</h3>
+            <div id="statsPorPlanta"></div>
+        </div>
+        
+        <div class="card">
+            <h3 class="font-bold text-gray-700 mb-3">Top Técnicos</h3>
+            <div id="statsPorTecnico"></div>
+        </div>
+        
+        <div class="card">
+            <h3 class="font-bold text-gray-700 mb-3">TAGs con más Reportes</h3>
+            <div id="statsPorTag"></div>
+        </div>
+    </div>
+    
+    <!-- TAB: USUARIOS (solo Admin) -->
+    <div id="contentUsuarios" class="hidden-view">
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-bold text-gray-700"><i class="fas fa-users"></i> Gestión de Usuarios</h3>
+                <span class="text-sm text-gray-500" id="contadorUsuarios">0 usuarios</span>
+            </div>
+            <div id="listaUsuarios"></div>
+        </div>
     </div>
 </div>
 
 <!-- ============================================ -->
-<!-- VISTA 3: FORMULARIO                          -->
+<!-- VISTA FORMULARIO                             -->
 <!-- ============================================ -->
 <div id="vistaFormulario" class="hidden-view p-4 md:p-8 max-w-4xl mx-auto">
     
@@ -325,15 +410,15 @@
         <div class="card">
             <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-clock text-blue-500 mr-2"></i>Información de Tiempo</h2>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div class="bg-gray-50 p-3 rounded-lg border">
                     <label class="label-modern text-blue-700">Salida de Servicio</label>
                     <input type="datetime-local" id="salida" class="input-modern">
                 </div>
-                <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div class="bg-gray-50 p-3 rounded-lg border">
                     <label class="label-modern text-blue-700">Inicio de Mantenimiento</label>
                     <input type="datetime-local" id="inicio" class="input-modern">
                 </div>
-                <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                <div class="bg-gray-50 p-3 rounded-lg border">
                     <label class="label-modern text-blue-700">Entrega a Procesos</label>
                     <input type="datetime-local" id="entrega" class="input-modern">
                 </div>
@@ -445,7 +530,7 @@
 
         <div class="text-center mt-8 mb-12 flex flex-wrap justify-center gap-3">
             <button type="button" onclick="guardarYGenerarPDF()" class="btn-primary text-lg py-4 px-8 rounded-full shadow-lg" id="btnGuardar">
-                <i class="fas fa-cloud-upload-alt mr-2"></i> GUARDAR Y GENERAR PDF
+                <i class="fas fa-save mr-2"></i> GUARDAR REPORTE
             </button>
             <button type="button" onclick="cancelarFormulario()" class="btn-secondary text-lg py-4 px-8 rounded-full">
                 <i class="fas fa-times mr-2"></i> CANCELAR
@@ -457,7 +542,7 @@
 <!-- ============================================ -->
 <!-- MODAL VISOR PDF                              -->
 <!-- ============================================ -->
-<div id="modalPDF" class="hidden-view fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+<div id="modalPDF" class="hidden-view modal-overlay">
     <div class="bg-white rounded-lg w-full max-w-4xl" style="height: 90vh;">
         <div class="flex items-center justify-between p-3 border-b">
             <h3 class="font-bold text-gray-800">📄 <span id="pdfTitulo">Reporte</span></h3>
@@ -475,7 +560,7 @@
 </div>
 
 <!-- ============================================ -->
-<!-- PLANTILLA PDF                                -->
+<!-- PLANTILLA PDF (IDÉNTICA AL FORMATO)          -->
 <!-- ============================================ -->
 <div id="pdf-template">
     <table class="pdf-table">
@@ -484,17 +569,17 @@
                 <div style="font-weight: bold; font-size: 12px; line-height: 1.4;">REPORTE DE EJECUCIÓN</div>
                 <div style="font-weight: bold; font-size: 12px; line-height: 1.4;">GERENCIA DE MANTENIMIENTO</div>
             </td>
-            <td style="width: 33%; padding: 5px;">
+            <td style="width: 33%; padding: 5px; vertical-align: top;">
                 <div style="font-size: 10px;"><span style="font-weight: bold;">ESPECIALIDAD:</span> M-INST</div>
                 <div style="font-size: 10px; margin-top: 2px;"><span style="font-weight: bold;">GRUPO:</span> Grupo 1</div>
             </td>
-            <td rowspan="2" style="width: 25%; padding: 5px;">
-                <div style="font-size: 10px;"><span style="font-weight: bold;">AVISO:</span> <span id="pdf_aviso"></span></div>
-                <div style="font-size: 10px; margin-top: 4px;"><span style="font-weight: bold;">ORDEN:</span> <span id="pdf_orden"></span></div>
+            <td rowspan="2" style="width: 25%; padding: 5px; vertical-align: top;">
+                <div style="font-size: 10px; margin-bottom: 4px;"><span style="font-weight: bold;">AVISO:</span> <span id="pdf_aviso"></span></div>
+                <div style="font-size: 10px; margin-top: 4px;"><span style="font-weight: bold;">ORDEN DE TRABAJO:</span> <span id="pdf_orden"></span></div>
             </td>
         </tr>
         <tr>
-            <td style="padding: 5px;">
+            <td style="padding: 5px; vertical-align: top;">
                 <div style="font-size: 10px;"><span style="font-weight: bold;">PLANTA:</span> <span id="pdf_planta"></span> &nbsp; <span style="font-weight: bold;">TAG:</span> <span id="pdf_tag"></span></div>
                 <div style="font-size: 10px; margin-top: 2px;"><span style="font-weight: bold;">DESCRIPCIÓN:</span> <span id="pdf_descripcion"></span></div>
             </td>
@@ -528,23 +613,23 @@
 
     <div class="pdf-section-title" style="margin-top: 5px;">DESCRIPCIÓN DEL TRABAJO (Favor llenar siempre la información solicitada)</div>
     <table class="pdf-table">
-        <tr><td style="padding: 5px; height: 32px;">
+        <tr><td style="padding: 5px; height: 32px; vertical-align: top;">
             <div style="font-weight: bold; font-size: 10px;">Causa de la Intervención / Síntoma Presentado:</div>
             <div style="font-size: 10px; margin-top: 3px;" id="pdf_causa"></div>
         </td></tr>
-        <tr><td style="padding: 5px; height: 32px;">
+        <tr><td style="padding: 5px; height: 32px; vertical-align: top;">
             <div style="font-weight: bold; font-size: 10px;">Descripción del Estado en que se encontraron las Partes / Componentes:</div>
             <div style="font-size: 10px; margin-top: 3px;" id="pdf_estado"></div>
         </td></tr>
-        <tr><td style="padding: 5px; height: 32px;">
+        <tr><td style="padding: 5px; height: 32px; vertical-align: top;">
             <div style="font-weight: bold; font-size: 10px;">Diagnostico/Causa:</div>
             <div style="font-size: 10px; margin-top: 3px;" id="pdf_diagnostico"></div>
         </td></tr>
-        <tr><td style="padding: 5px; height: 45px;">
+        <tr><td style="padding: 5px; height: 45px; vertical-align: top;">
             <div style="font-weight: bold; font-size: 10px;">Trabajos Ejecutados:</div>
             <div style="font-size: 10px; margin-top: 3px;" id="pdf_trabajos"></div>
         </td></tr>
-        <tr><td style="padding: 5px; height: 32px;">
+        <tr><td style="padding: 5px; height: 32px; vertical-align: top;">
             <div style="font-weight: bold; font-size: 10px;">Repuestos Utilizados:</div>
             <div style="font-size: 10px; margin-top: 3px;" id="pdf_repuestos"></div>
         </td></tr>
@@ -552,15 +637,15 @@
 
     <table class="pdf-table">
         <tr>
-            <td style="width: 33%; padding: 6px; font-size: 10px;">
+            <td style="width: 33%; padding: 6px; vertical-align: top; font-size: 10px;">
                 <div style="font-weight: bold; margin-bottom: 4px;">La Planta o Equipo Critico Salió de Servicio</div>
                 <div><span class="pdf-checkbox" id="pdf_critico_si"></span> SI &nbsp;&nbsp; <span class="pdf-checkbox" id="pdf_critico_no"></span> NO</div>
             </td>
-            <td style="width: 33%; padding: 6px; font-size: 10px;">
+            <td style="width: 33%; padding: 6px; vertical-align: top; font-size: 10px;">
                 <div style="font-weight: bold; margin-bottom: 4px;">Requiere Análisis de Ingeniería</div>
                 <div><span class="pdf-checkbox" id="pdf_analisis_si"></span> SI &nbsp;&nbsp; <span class="pdf-checkbox" id="pdf_analisis_no"></span> NO</div>
             </td>
-            <td style="width: 34%; padding: 6px; font-size: 10px;">
+            <td style="width: 34%; padding: 6px; vertical-align: top; font-size: 10px;">
                 <div style="font-weight: bold; margin-bottom: 4px;">Supervisor de Operación que recibió el trabajo:</div>
                 <div id="pdf_supervisor_op"></div>
             </td>
@@ -568,7 +653,7 @@
     </table>
 
     <table class="pdf-table">
-        <tr><td colspan="2" style="padding: 5px; height: 30px;">
+        <tr><td colspan="2" style="padding: 5px; height: 30px; vertical-align: top;">
             <div style="font-weight: bold; font-size: 10px;">Observaciones Generales (Proceso/ Mantenimiento):</div>
             <div style="font-size: 10px; margin-top: 3px;" id="pdf_observaciones"></div>
         </td></tr>
@@ -591,17 +676,19 @@
 // ============================================
 // CONSTANTES
 // ============================================
-const CODIGO_INVITACION = "MANT-2026"; // ⚠️ CAMBIA ESTE CÓDIGO
+const CODIGO_INVITACION = "MANT-2026"; // ⚠️ Cambia este código
 
 // ============================================
 // ESTADO GLOBAL
 // ============================================
 let usuarioActual = null;
 let reportesCache = [];
+let usuariosCache = [];
 let fotosArray = [];
 let reporteEditando = null;
 let pdfActualBlob = null;
 let pdfActualNombre = "";
+let tabActual = 'reportes';
 
 // ============================================
 // INICIALIZACIÓN
@@ -619,6 +706,7 @@ window.addEventListener('firebaseReady', () => {
                 usuarioActual = { uid: user.uid, email: user.email, ...perfil };
                 mostrarDashboard();
             } else {
+                // Crear perfil si no existe
                 const nuevoPerfil = {
                     nombre: user.email.split('@')[0],
                     email: user.email,
@@ -777,7 +865,38 @@ function mostrarDashboard() {
     badge.className = 'rol-badge rol-' + (usuarioActual.rol || 'tecnico');
     badge.textContent = usuarioActual.rol || 'técnico';
     
+    // Mostrar tab de usuarios solo para admin
+    if (usuarioActual.rol === 'admin') {
+        document.getElementById('tabUsuarios').classList.remove('hidden-view');
+    } else {
+        document.getElementById('tabUsuarios').classList.add('hidden-view');
+    }
+    
     cargarReportes();
+    cambiarTab('reportes');
+}
+
+function cambiarTab(tab) {
+    tabActual = tab;
+    ['reportes', 'estadisticas', 'usuarios'].forEach(t => {
+        const content = document.getElementById('content' + t.charAt(0).toUpperCase() + t.slice(1));
+        const tabBtn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+        
+        if (t === tab) {
+            content.classList.remove('hidden-view');
+            tabBtn.className = 'px-6 py-3 whitespace-nowrap tab-active';
+        } else {
+            content.classList.add('hidden-view');
+            tabBtn.className = 'px-6 py-3 whitespace-nowrap tab-inactive';
+        }
+    });
+    
+    if (tab === 'estadisticas') {
+        calcularEstadisticas();
+    }
+    if (tab === 'usuarios') {
+        cargarUsuarios();
+    }
 }
 
 function cancelarFormulario() {
@@ -788,49 +907,50 @@ function cancelarFormulario() {
 }
 
 // ============================================
-// CARGAR Y MOSTRAR REPORTES
+// CARGAR REPORTES
 // ============================================
 async function cargarReportes() {
     try {
         const { collection, getDocs, query, orderBy, limit } = window.firebaseFns;
-        const q = query(collection(window.firebaseDB, 'reportes'), orderBy('fechaCreacion', 'desc'), limit(500));
+        const q = query(collection(window.firebaseDB, 'reportes'), orderBy('fechaCreacion', 'desc'), limit(1000));
         const snap = await getDocs(q);
-        
-        reportesCache = snap.docs.map(d => {
-            const data = d.data();
-            delete data.pdfBase64;
-            return { id: d.id, ...data };
-        });
-        
+        reportesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         aplicarFiltros();
+        cargarTecnicosEnFiltro();
     } catch (e) {
-        console.error('Error con orderBy, intentando sin índice:', e);
+        console.error('Error:', e);
+        // Fallback sin orderBy
         try {
             const { collection, getDocs } = window.firebaseFns;
             const snap = await getDocs(collection(window.firebaseDB, 'reportes'));
-            reportesCache = snap.docs.map(d => {
-                const data = d.data();
-                delete data.pdfBase64;
-                return { id: d.id, ...data };
-            });
-            // Ordenar manualmente
+            reportesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
             reportesCache.sort((a, b) => {
                 const fa = a.fechaCreacion?.toDate ? a.fechaCreacion.toDate() : new Date(a.fechaCreacion || 0);
                 const fb = b.fechaCreacion?.toDate ? b.fechaCreacion.toDate() : new Date(b.fechaCreacion || 0);
                 return fb - fa;
             });
             aplicarFiltros();
+            cargarTecnicosEnFiltro();
         } catch (e2) {
             console.error(e2);
-            alert('Error cargando reportes. Revisa la consola.');
         }
     }
+}
+
+function cargarTecnicosEnFiltro() {
+    const select = document.getElementById('filtroTecnico');
+    const tecnicos = [...new Set(reportesCache.map(r => r.autorNombre).filter(Boolean))].sort();
+    select.innerHTML = '<option value="">Todos</option>' + 
+        tecnicos.map(t => `<option value="${t}">${t}</option>`).join('');
 }
 
 function aplicarFiltros() {
     const busqueda = (document.getElementById('busquedaGlobal')?.value || '').toLowerCase().trim();
     const planta = document.getElementById('filtroPlanta')?.value || '';
-    const fechaFiltro = document.getElementById('filtroFecha')?.value || '';
+    const tecnico = document.getElementById('filtroTecnico')?.value || '';
+    const critico = document.getElementById('filtroCritico')?.value || '';
+    const fechaDesde = document.getElementById('filtroFechaDesde')?.value || '';
+    const fechaHasta = document.getElementById('filtroFechaHasta')?.value || '';
     
     let filtrados = [...reportesCache];
     
@@ -846,21 +966,23 @@ function aplicarFiltros() {
     }
     
     if (planta) filtrados = filtrados.filter(r => r.planta === planta);
+    if (tecnico) filtrados = filtrados.filter(r => r.autorNombre === tecnico);
+    if (critico) filtrados = filtrados.filter(r => r.critico === critico);
     
-    if (fechaFiltro) {
-        const ahora = new Date();
-        let limite;
-        if (fechaFiltro === 'hoy') limite = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
-        else if (fechaFiltro === 'semana') limite = new Date(ahora.getTime() - 7 * 24 * 60 * 60 * 1000);
-        else if (fechaFiltro === 'mes') limite = new Date(ahora.getTime() - 30 * 24 * 60 * 60 * 1000);
-        
-        if (limite) {
-            filtrados = filtrados.filter(r => {
-                if (!r.fechaCreacion) return false;
-                const fecha = r.fechaCreacion.toDate ? r.fechaCreacion.toDate() : new Date(r.fechaCreacion);
-                return fecha >= limite;
-            });
-        }
+    if (fechaDesde) {
+        const d = new Date(fechaDesde);
+        filtrados = filtrados.filter(r => {
+            const f = r.fechaCreacion?.toDate ? r.fechaCreacion.toDate() : new Date(r.fechaCreacion || 0);
+            return f >= d;
+        });
+    }
+    if (fechaHasta) {
+        const d = new Date(fechaHasta);
+        d.setHours(23, 59, 59);
+        filtrados = filtrados.filter(r => {
+            const f = r.fechaCreacion?.toDate ? r.fechaCreacion.toDate() : new Date(r.fechaCreacion || 0);
+            return f <= d;
+        });
     }
     
     renderizarLista(filtrados);
@@ -886,7 +1008,7 @@ function renderizarLista(reportes) {
         const puedeEliminar = usuarioActual.rol === 'admin';
         
         return `
-        <div class="reporte-card">
+        <div class="reporte-card ${r.critico === 'SI' ? 'border-l-red-500' : ''}">
             <div class="flex flex-wrap items-start justify-between gap-2 mb-2">
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap mb-1">
@@ -895,19 +1017,22 @@ function renderizarLista(reportes) {
                         <span class="text-sm text-gray-600">${r.planta || 'S/P'}</span>
                         <span class="text-gray-400">•</span>
                         <span class="text-xs text-gray-500">${fechaStr}</span>
+                        ${r.critico === 'SI' ? '<span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">CRÍTICO</span>' : ''}
+                        ${r.analisis === 'SI' ? '<span class="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded">ANÁLISIS</span>' : ''}
                     </div>
                     <div class="text-sm text-gray-700 truncate">${r.descripcion || 'Sin descripción'}</div>
                     <div class="text-xs text-gray-500 mt-1">
                         <i class="fas fa-user"></i> ${r.autorNombre || 'Anónimo'} 
                         ${r.aviso ? '• Aviso: ' + r.aviso : ''}
                         ${r.orden ? '• OT: ' + r.orden : ''}
+                        ${r.numFotos ? '• ' + r.numFotos + ' fotos' : ''}
                     </div>
                 </div>
                 <div class="flex gap-2 flex-wrap">
                     <button onclick="verPDF('${r.id}')" class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;">
                         <i class="fas fa-eye"></i> Ver PDF
                     </button>
-                    ${puedeEditar ? `<button onclick="editarReporte('${r.id}')" class="btn-warning"><i class="fas fa-edit"></i> Editar</button>` : ''}
+                    ${puedeEditar ? `<button onclick="editarReporte('${r.id}')" class="btn-warning"><i class="fas fa-edit"></i></button>` : ''}
                     ${puedeEliminar ? `<button onclick="eliminarReporte('${r.id}')" class="btn-danger"><i class="fas fa-trash"></i></button>` : ''}
                 </div>
             </div>
@@ -917,10 +1042,226 @@ function renderizarLista(reportes) {
 }
 
 function limpiarFiltros() {
-    document.getElementById('busquedaGlobal').value = '';
-    document.getElementById('filtroPlanta').value = '';
-    document.getElementById('filtroFecha').value = '';
+    ['busquedaGlobal', 'filtroPlanta', 'filtroTecnico', 'filtroCritico', 'filtroFechaDesde', 'filtroFechaHasta'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
     aplicarFiltros();
+}
+
+// ============================================
+// ESTADÍSTICAS
+// ============================================
+function calcularEstadisticas() {
+    const total = reportesCache.length;
+    const criticos = reportesCache.filter(r => r.critico === 'SI').length;
+    const analisis = reportesCache.filter(r => r.analisis === 'SI').length;
+    
+    const ahora = new Date();
+    const mesActual = reportesCache.filter(r => {
+        const f = r.fechaCreacion?.toDate ? r.fechaCreacion.toDate() : new Date(r.fechaCreacion || 0);
+        return f.getMonth() === ahora.getMonth() && f.getFullYear() === ahora.getFullYear();
+    }).length;
+    
+    document.getElementById('statTotalReportes').textContent = total;
+    document.getElementById('statCriticos').textContent = criticos;
+    document.getElementById('statAnalisis').textContent = analisis;
+    document.getElementById('statMesActual').textContent = mesActual;
+    
+    // Por planta
+    const porPlanta = {};
+    reportesCache.forEach(r => {
+        const p = r.planta || 'Sin planta';
+        porPlanta[p] = (porPlanta[p] || 0) + 1;
+    });
+    const maxPlanta = Math.max(...Object.values(porPlanta), 1);
+    document.getElementById('statsPorPlanta').innerHTML = Object.entries(porPlanta)
+        .sort((a, b) => b[1] - a[1])
+        .map(([planta, count]) => `
+            <div class="mb-2">
+                <div class="flex justify-between text-sm mb-1">
+                    <span>${planta}</span>
+                    <strong>${count}</strong>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-blue-500 h-2 rounded-full" style="width: ${(count / maxPlanta) * 100}%"></div>
+                </div>
+            </div>
+        `).join('') || '<p class="text-gray-400 text-sm">Sin datos</p>';
+    
+    // Por técnico
+    const porTecnico = {};
+    reportesCache.forEach(r => {
+        const t = r.autorNombre || 'Anónimo';
+        porTecnico[t] = (porTecnico[t] || 0) + 1;
+    });
+    const maxTecnico = Math.max(...Object.values(porTecnico), 1);
+    document.getElementById('statsPorTecnico').innerHTML = Object.entries(porTecnico)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 10)
+        .map(([nombre, count], i) => `
+            <div class="mb-2">
+                <div class="flex justify-between text-sm mb-1">
+                    <span>${i + 1}. ${nombre}</span>
+                    <strong>${count}</strong>
+                </div>
+                <div class="w-full bg-gray-200 rounded-full h-2">
+                    <div class="bg-green-500 h-2 rounded-full" style="width: ${(count / maxTecnico) * 100}%"></div>
+                </div>
+            </div>
+        `).join('') || '<p class="text-gray-400 text-sm">Sin datos</p>';
+    
+    // Por TAG
+    const porTag = {};
+    reportesCache.forEach(r => {
+        const t = r.tag || 'Sin TAG';
+        porTag[t] = (porTag[t] || 0) + 1;
+    });
+    const tagsOrdenados = Object.entries(porTag).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    document.getElementById('statsPorTag').innerHTML = tagsOrdenados.length 
+        ? tagsOrdenados.map(([tag, count]) => `
+            <div class="flex justify-between items-center py-2 border-b text-sm">
+                <span class="font-mono">${tag}</span>
+                <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold">${count} reportes</span>
+            </div>
+        `).join('')
+        : '<p class="text-gray-400 text-sm">Sin datos</p>';
+}
+
+// ============================================
+// GESTIÓN DE USUARIOS (ADMIN)
+// ============================================
+async function cargarUsuarios() {
+    if (usuarioActual.rol !== 'admin') return;
+    try {
+        const { collection, getDocs } = window.firebaseFns;
+        const snap = await getDocs(collection(window.firebaseDB, 'usuarios'));
+        usuariosCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderizarUsuarios();
+        document.getElementById('contadorUsuarios').textContent = usuariosCache.length + ' usuarios';
+    } catch (e) {
+        console.error(e);
+        alert('Error cargando usuarios');
+    }
+}
+
+function renderizarUsuarios() {
+    const cont = document.getElementById('listaUsuarios');
+    
+    cont.innerHTML = usuariosCache
+        .sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''))
+        .map(u => {
+            const esYo = u.id === usuarioActual.uid;
+            const fecha = u.fechaCreacion?.toDate ? u.fechaCreacion.toDate() : null;
+            const fechaStr = fecha ? fecha.toLocaleDateString('es-CO') : 'N/A';
+            const numReportes = reportesCache.filter(r => r.autor === u.id).length;
+            
+            return `
+            <div class="user-row">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <strong class="truncate">${u.nombre || 'Sin nombre'}</strong>
+                        <span class="rol-badge rol-${u.rol || 'tecnico'}">${u.rol || 'tecnico'}</span>
+                        ${esYo ? '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">TÚ</span>' : ''}
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1">${u.email || 'Sin correo'} • Registrado: ${fechaStr} • ${numReportes} reportes</div>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <select onchange="cambiarRol('${u.id}', this.value)" class="input-modern" style="width: auto; padding: 6px 8px; font-size: 0.8rem;" ${esYo ? 'disabled' : ''}>
+                        <option value="tecnico" ${u.rol === 'tecnico' ? 'selected' : ''}>Técnico</option>
+                        <option value="supervisor" ${u.rol === 'supervisor' ? 'selected' : ''}>Supervisor</option>
+                        <option value="admin" ${u.rol === 'admin' ? 'selected' : ''}>Admin</option>
+                    </select>
+                    ${!esYo ? `<button onclick="eliminarUsuario('${u.id}', '${u.nombre || u.email}')" class="btn-danger"><i class="fas fa-trash"></i></button>` : ''}
+                </div>
+            </div>`;
+        }).join('') || '<p class="text-gray-400 text-center py-4">No hay usuarios</p>';
+}
+
+async function cambiarRol(uid, nuevoRol) {
+    if (uid === usuarioActual.uid) {
+        alert('No puedes cambiar tu propio rol');
+        return;
+    }
+    if (!confirm(`¿Cambiar el rol de este usuario a "${nuevoRol}"?`)) {
+        cargarUsuarios(); // Revertir
+        return;
+    }
+    try {
+        const { doc, updateDoc } = window.firebaseFns;
+        await updateDoc(doc(window.firebaseDB, 'usuarios', uid), { rol: nuevoRol });
+        alert('✅ Rol actualizado');
+        cargarUsuarios();
+    } catch (e) {
+        console.error(e);
+        alert('❌ Error: ' + e.message);
+        cargarUsuarios();
+    }
+}
+
+async function eliminarUsuario(uid, nombre) {
+    if (uid === usuarioActual.uid) {
+        alert('No puedes eliminarte a ti mismo');
+        return;
+    }
+    if (!confirm(`⚠️ ¿Eliminar al usuario "${nombre}"? Esta acción borra su perfil. Los reportes que hizo quedan pero sin autor.`)) return;
+    
+    try {
+        const { doc, deleteDoc } = window.firebaseFns;
+        await deleteDoc(doc(window.firebaseDB, 'usuarios', uid));
+        alert('✅ Usuario eliminado. Nota: la cuenta de Authentication debe eliminarse manualmente desde Firebase Console.');
+        cargarUsuarios();
+    } catch (e) {
+        console.error(e);
+        alert('❌ Error: ' + e.message);
+    }
+}
+
+// ============================================
+// EXPORTAR CSV
+// ============================================
+function exportarCSV() {
+    if (reportesCache.length === 0) {
+        alert('No hay reportes para exportar');
+        return;
+    }
+    
+    const headers = ['Fecha', 'Tag', 'Planta', 'Aviso', 'Orden', 'Descripción', 'Causa', 'Estado', 'Diagnóstico', 'Trabajos', 'Repuestos', 'Crítico', 'Análisis', 'Supervisor Op', 'Observaciones', 'Técnico', 'Supervisor'];
+    
+    const filas = reportesCache.map(r => {
+        const fecha = r.fechaCreacion?.toDate ? r.fechaCreacion.toDate() : new Date(r.fechaCreacion || 0);
+        return [
+            fecha.toLocaleString('es-CO'),
+            r.tag || '',
+            r.planta || '',
+            r.aviso || '',
+            r.orden || '',
+            r.descripcion || '',
+            r.causa || '',
+            r.estado || '',
+            r.diagnostico || '',
+            r.trabajos || '',
+            r.repuestos || '',
+            r.critico || '',
+            r.analisis || '',
+            r.supervisorOp || '',
+            r.observaciones || '',
+            r.autorNombre || '',
+            r.nombreSupervisor || ''
+        ];
+    });
+    
+    const csv = [headers, ...filas]
+        .map(fila => fila.map(celda => `"${String(celda).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+    
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `reportes_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
 }
 
 // ============================================
@@ -951,7 +1292,7 @@ async function editarReporte(id) {
     ['salida', 'inicio', 'entrega'].forEach(c => {
         const el = document.getElementById(c);
         if (el && r[c]) {
-            const fecha = r[c].toDate ? r[c].toDate() : new Date(r[c]);
+            const fecha = new Date(r[c]);
             const iso = new Date(fecha.getTime() - fecha.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
             el.value = iso;
         } else if (el) el.value = '';
@@ -962,21 +1303,16 @@ async function editarReporte(id) {
     const analisis = document.querySelector(`input[name="analisis"][value="${r.analisis || 'NO'}"]`);
     if (analisis) analisis.checked = true;
     
-    // Cargar fotos desde subcolección
+    // Cargar fotos
     fotosArray = [];
     try {
         const { collection, getDocs, query, orderBy } = window.firebaseFns;
         const q = query(collection(window.firebaseDB, 'reportes', id, 'fotos'), orderBy('orden'));
         const snap = await getDocs(q);
-        snap.docs.forEach(d => {
-            fotosArray.push(d.data().base64);
-        });
-    } catch (e) {
-        console.error('Error cargando fotos:', e);
-    }
+        snap.docs.forEach(d => fotosArray.push(d.data().base64));
+    } catch (e) { console.error(e); }
     renderizarFotos();
     
-    // Firmas
     if (r.firmaTecnico) dibujarFirma('firmaTecnico', r.firmaTecnico); else limpiarFirma('firmaTecnico');
     if (r.firmaSupervisor) dibujarFirma('firmaSupervisor', r.firmaSupervisor); else limpiarFirma('firmaSupervisor');
     
@@ -997,7 +1333,7 @@ function limpiarFormularioCampos() {
 }
 
 // ============================================
-// GUARDAR Y GENERAR PDF
+// GUARDAR REPORTE (SIN PDF EN FIRESTORE)
 // ============================================
 async function guardarYGenerarPDF() {
     if (!usuarioActual) {
@@ -1019,30 +1355,19 @@ async function guardarYGenerarPDF() {
     try {
         const { doc, setDoc, updateDoc, collection, getDocs, deleteDoc, serverTimestamp } = window.firebaseFns;
         
-        // 1. Generar PDF como base64
-        const pdfBlob = await generarPDFBlob();
-        pdfActualBlob = pdfBlob;
-        const pdfBase64 = await blobToBase64(pdfBlob);
+        // Generar PDF local (solo para descargar)
+        const pdfBlob = await generarPDFActual();
+        const nombrePDF = `reporte_${tag}_${Date.now()}.pdf`;
         
-        const pesoKB = Math.round(pdfBase64.length / 1024);
-        console.log(`📄 PDF generado: ${pesoKB} KB`);
-        if (pesoKB > 950) {
-            alert('⚠️ El PDF es demasiado grande (límite 1 MB). Reduce el número de fotos.');
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-cloud-upload-alt mr-2"></i> GUARDAR Y GENERAR PDF';
-            return;
-        }
-        
-        // 2. Preparar datos (sin fotos, sin firmas dentro del doc principal para ahorrar peso)
         const datos = {
             aviso: document.getElementById('aviso').value.trim(),
             orden: document.getElementById('orden').value.trim(),
             planta: planta,
             tag: tag,
             descripcion: document.getElementById('descripcion').value.trim(),
-            salida: document.getElementById('salida').value ? new Date(document.getElementById('salida').value) : null,
-            inicio: document.getElementById('inicio').value ? new Date(document.getElementById('inicio').value) : null,
-            entrega: document.getElementById('entrega').value ? new Date(document.getElementById('entrega').value) : null,
+            salida: document.getElementById('salida').value || null,
+            inicio: document.getElementById('inicio').value || null,
+            entrega: document.getElementById('entrega').value || null,
             totalFuera: document.getElementById('displayTotalFuera').innerText.replace(' HH:MM', ''),
             totalNeto: document.getElementById('displayTotalNeto').innerText.replace(' HH:MM', ''),
             obsTiempo: document.getElementById('obsTiempo').value.trim(),
@@ -1059,9 +1384,8 @@ async function guardarYGenerarPDF() {
             nombreSupervisor: document.getElementById('nombreSupervisor').value.trim(),
             firmaTecnico: obtenerFirmaBase64('firmaTecnico'),
             firmaSupervisor: obtenerFirmaBase64('firmaSupervisor'),
-            pdfBase64: pdfBase64,
-            pdfNombre: `reporte_${tag}_${Date.now()}.pdf`,
-            numFotos: fotosArray.length
+            numFotos: fotosArray.length,
+            pdfNombre: nombrePDF
         };
         
         let reporteIdFinal;
@@ -1072,7 +1396,6 @@ async function guardarYGenerarPDF() {
             await updateDoc(doc(window.firebaseDB, 'reportes', reporteEditando), datos);
             reporteIdFinal = reporteEditando;
             
-            // Borrar fotos viejas
             const fotosViejas = await getDocs(collection(window.firebaseDB, 'reportes', reporteEditando, 'fotos'));
             for (const f of fotosViejas.docs) {
                 await deleteDoc(doc(window.firebaseDB, 'reportes', reporteEditando, 'fotos', f.id));
@@ -1086,14 +1409,13 @@ async function guardarYGenerarPDF() {
             await setDoc(nuevoDoc, datos);
         }
         
-        // 3. Guardar cada foto en subcolección
+        // Guardar fotos en subcolección
         for (let i = 0; i < fotosArray.length; i++) {
             const pesoFotoKB = Math.round(fotosArray[i].length / 1024);
-            if (pesoFotoKB > 950) {
+            if (pesoFotoKB > 300) {
                 console.warn(`Foto ${i+1} muy grande (${pesoFotoKB} KB), se salta`);
                 continue;
             }
-            
             const fotoRef = doc(collection(window.firebaseDB, 'reportes', reporteIdFinal, 'fotos'));
             await setDoc(fotoRef, {
                 base64: fotosArray[i],
@@ -1103,10 +1425,10 @@ async function guardarYGenerarPDF() {
             });
         }
         
-        // 4. Descargar PDF localmente
-        descargarBlob(pdfBlob, datos.pdfNombre);
+        // Descargar PDF localmente
+        descargarBlob(pdfBlob, nombrePDF);
         
-        alert('✅ Reporte guardado correctamente');
+        alert('✅ Reporte guardado. El PDF se descargó en tu dispositivo.');
         reporteEditando = null;
         mostrarDashboard();
         
@@ -1115,107 +1437,118 @@ async function guardarYGenerarPDF() {
         alert('❌ Error al guardar: ' + e.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-cloud-upload-alt mr-2"></i> GUARDAR Y GENERAR PDF';
+        btn.innerHTML = '<i class="fas fa-save mr-2"></i> GUARDAR REPORTE';
     }
 }
 
 // ============================================
-// GENERAR PDF (Blob)
+// GENERAR PDF CON LOS DATOS ACTUALES
 // ============================================
-async function generarPDFBlob() {
+async function generarPDFActual() {
+    const datos = {
+        aviso: document.getElementById('aviso').value,
+        orden: document.getElementById('orden').value,
+        planta: document.getElementById('planta').value,
+        tag: document.getElementById('tag').value,
+        descripcion: document.getElementById('descripcion').value,
+        salida: document.getElementById('salida').value,
+        inicio: document.getElementById('inicio').value,
+        entrega: document.getElementById('entrega').value,
+        totalFuera: document.getElementById('displayTotalFuera').innerText.replace(' HH:MM', ''),
+        totalNeto: document.getElementById('displayTotalNeto').innerText.replace(' HH:MM', ''),
+        obsTiempo: document.getElementById('obsTiempo').value,
+        causa: document.getElementById('causa').value,
+        estado: document.getElementById('estado').value,
+        diagnostico: document.getElementById('diagnostico').value,
+        trabajos: document.getElementById('trabajos').value,
+        repuestos: document.getElementById('repuestos').value,
+        critico: document.querySelector('input[name="critico"]:checked').value,
+        analisis: document.querySelector('input[name="analisis"]:checked').value,
+        supervisorOp: document.getElementById('supervisorOp').value,
+        observaciones: document.getElementById('observaciones').value,
+        nombreTecnico: document.getElementById('nombreTecnico').value,
+        nombreSupervisor: document.getElementById('nombreSupervisor').value,
+        firmaTecnico: obtenerFirmaBase64('firmaTecnico'),
+        firmaSupervisor: obtenerFirmaBase64('firmaSupervisor')
+    };
+    return generarPDFDesdeDatos(datos, fotosArray);
+}
+
+// ============================================
+// GENERAR PDF DESDE DATOS (REUTILIZABLE)
+// ============================================
+async function generarPDFDesdeDatos(r, fotos) {
     const { jsPDF } = window.jspdf;
     
-    document.getElementById('pdf_aviso').innerText = document.getElementById('aviso').value || 'N/A';
-    document.getElementById('pdf_orden').innerText = document.getElementById('orden').value || 'N/A';
-    document.getElementById('pdf_planta').innerText = document.getElementById('planta').value || 'N/A';
-    document.getElementById('pdf_tag').innerText = document.getElementById('tag').value || 'N/A';
-    document.getElementById('pdf_descripcion').innerText = document.getElementById('descripcion').value || 'N/A';
+    document.getElementById('pdf_aviso').innerText = r.aviso || 'N/A';
+    document.getElementById('pdf_orden').innerText = r.orden || 'N/A';
+    document.getElementById('pdf_planta').innerText = r.planta || 'N/A';
+    document.getElementById('pdf_tag').innerText = r.tag || 'N/A';
+    document.getElementById('pdf_descripcion').innerText = r.descripcion || 'N/A';
     
     const formatFecha = (val) => {
         if(!val) return 'N/A';
         const d = new Date(val);
         return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     };
-    document.getElementById('pdf_salida').innerText = formatFecha(document.getElementById('salida').value);
-    document.getElementById('pdf_inicio').innerText = formatFecha(document.getElementById('inicio').value);
-    document.getElementById('pdf_entrega').innerText = formatFecha(document.getElementById('entrega').value);
-    document.getElementById('pdf_total_fuera').innerText = document.getElementById('displayTotalFuera').innerText.replace(' HH:MM', '');
-    document.getElementById('pdf_total_neto').innerText = document.getElementById('displayTotalNeto').innerText.replace(' HH:MM', '');
-    document.getElementById('pdf_obs_tiempo').innerText = document.getElementById('obsTiempo').value || '';
-    document.getElementById('pdf_causa').innerText = document.getElementById('causa').value || '.';
-    document.getElementById('pdf_estado').innerText = document.getElementById('estado').value || '.';
-    document.getElementById('pdf_diagnostico').innerText = document.getElementById('diagnostico').value || '.';
-    document.getElementById('pdf_trabajos').innerText = document.getElementById('trabajos').value || '.';
-    document.getElementById('pdf_repuestos').innerText = document.getElementById('repuestos').value || '.';
+    document.getElementById('pdf_salida').innerText = formatFecha(r.salida);
+    document.getElementById('pdf_inicio').innerText = formatFecha(r.inicio);
+    document.getElementById('pdf_entrega').innerText = formatFecha(r.entrega);
+    document.getElementById('pdf_total_fuera').innerText = r.totalFuera || '00:00';
+    document.getElementById('pdf_total_neto').innerText = r.totalNeto || '00:00';
+    document.getElementById('pdf_obs_tiempo').innerText = r.obsTiempo || '';
+    document.getElementById('pdf_causa').innerText = r.causa || '.';
+    document.getElementById('pdf_estado').innerText = r.estado || '.';
+    document.getElementById('pdf_diagnostico').innerText = r.diagnostico || '.';
+    document.getElementById('pdf_trabajos').innerText = r.trabajos || '.';
+    document.getElementById('pdf_repuestos').innerText = r.repuestos || '.';
     
-    const critico = document.querySelector('input[name="critico"]:checked').value;
-    document.getElementById('pdf_critico_si').innerText = critico === 'SI' ? 'X' : '';
-    document.getElementById('pdf_critico_no').innerText = critico === 'NO' ? 'X' : '';
-    const analisis = document.querySelector('input[name="analisis"]:checked').value;
-    document.getElementById('pdf_analisis_si').innerText = analisis === 'SI' ? 'X' : '';
-    document.getElementById('pdf_analisis_no').innerText = analisis === 'NO' ? 'X' : '';
+    document.getElementById('pdf_critico_si').innerText = r.critico === 'SI' ? 'X' : '';
+    document.getElementById('pdf_critico_no').innerText = r.critico === 'NO' ? 'X' : '';
+    document.getElementById('pdf_analisis_si').innerText = r.analisis === 'SI' ? 'X' : '';
+    document.getElementById('pdf_analisis_no').innerText = r.analisis === 'NO' ? 'X' : '';
     
-    document.getElementById('pdf_supervisor_op').innerText = document.getElementById('supervisorOp').value || 'N/A';
-    document.getElementById('pdf_observaciones').innerText = document.getElementById('observaciones').value || '.';
+    document.getElementById('pdf_supervisor_op').innerText = r.supervisorOp || 'N/A';
+    document.getElementById('pdf_observaciones').innerText = r.observaciones || '.';
     
-    const firmaTec = obtenerFirmaBase64('firmaTecnico');
-    const firmaSup = obtenerFirmaBase64('firmaSupervisor');
     const imgTec = document.getElementById('pdf_firma_tecnico_img');
     const imgSup = document.getElementById('pdf_firma_supervisor_img');
-    if (firmaTec) { imgTec.src = firmaTec; imgTec.style.display = 'inline-block'; } else { imgTec.style.display = 'none'; }
-    if (firmaSup) { imgSup.src = firmaSup; imgSup.style.display = 'inline-block'; } else { imgSup.style.display = 'none'; }
-    document.getElementById('pdf_nombre_tecnico').innerText = document.getElementById('nombreTecnico').value || '';
-    document.getElementById('pdf_nombre_supervisor').innerText = document.getElementById('nombreSupervisor').value || '';
+    if (r.firmaTecnico) { imgTec.src = r.firmaTecnico; imgTec.style.display = 'inline-block'; } else { imgTec.style.display = 'none'; }
+    if (r.firmaSupervisor) { imgSup.src = r.firmaSupervisor; imgSup.style.display = 'inline-block'; } else { imgSup.style.display = 'none'; }
+    document.getElementById('pdf_nombre_tecnico').innerText = r.nombreTecnico || '';
+    document.getElementById('pdf_nombre_supervisor').innerText = r.nombreSupervisor || '';
     
     const template = document.getElementById('pdf-template');
-    const canvas = await html2canvas(template, { scale: 1, useCORS: true });
-    const imgData = canvas.toDataURL('image/png');
+    const canvas = await html2canvas(template, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
+    const imgData = canvas.toDataURL('image/jpeg', 0.75);
     
-    const doc = new jsPDF('p', 'mm', 'a4');
+    const doc = new jsPDF('p', 'mm', 'a4', { compress: true });
     const imgWidth = 210;
-    const pageHeight = 297;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
     
-    let heightLeft = imgHeight;
-    let position = 0;
-    doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-    heightLeft -= pageHeight;
-    while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        doc.addPage();
-        doc.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-    }
+    doc.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
     
-    if (fotosArray.length > 0) {
+    if (fotos && fotos.length > 0) {
         doc.addPage();
         doc.setFontSize(14);
         doc.setFont("helvetica", "bold");
         doc.text("EVIDENCIAS FOTOGRÁFICAS", 105, 15, { align: "center" });
         doc.setDrawColor(37, 99, 235);
-        doc.setLineWidth(0.5);
         doc.line(15, 18, 195, 18);
         
         let x = 15, y = 25;
-        const imgW = 55, imgH = 42, marginX = 10, marginY = 12, maxCols = 3;
+        const imgW = 60, imgH = 45, marginX = 5, marginY = 5, maxCols = 3;
         let col = 0;
-        for (let i = 0; i < fotosArray.length; i++) {
+        for (let i = 0; i < fotos.length; i++) {
             if (col >= maxCols) { col = 0; x = 15; y += imgH + marginY; }
             if (y + imgH > 280) { doc.addPage(); y = 20; x = 15; col = 0; }
-            doc.setDrawColor(200, 200, 200);
-            doc.setLineWidth(0.3);
-            doc.rect(x - 1, y - 1, imgW + 2, imgH + 2);
-            doc.addImage(fotosArray[i], 'JPEG', x, y, imgW, imgH);
-            doc.setFontSize(8);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(100, 100, 100);
-            doc.text(`Foto ${i + 1}`, x + imgW / 2, y + imgH + 5, { align: "center" });
+            doc.addImage(fotos[i], 'JPEG', x, y, imgW, imgH);
             x += imgW + marginX;
             col++;
         }
     }
     
-    return doc.output('blob');
+    return doc.output('blob', { compress: true });
 }
 
 function blobToBase64(blob) {
@@ -1225,16 +1558,6 @@ function blobToBase64(blob) {
         reader.onerror = reject;
         reader.readAsDataURL(blob);
     });
-}
-
-function base64ToBlob(dataUrl) {
-    const [meta, base64] = dataUrl.split(',');
-    const mime = meta.match(/:(.*?);/)[1];
-    const binary = atob(base64);
-    const len = binary.length;
-    const bytes = new Uint8Array(len);
-    for (let i = 0; i < len; i++) bytes[i] = binary.charCodeAt(i);
-    return new Blob([bytes], { type: mime });
 }
 
 function descargarBlob(blob, nombre) {
@@ -1247,34 +1570,37 @@ function descargarBlob(blob, nombre) {
 }
 
 // ============================================
-// VER PDF
+// VER PDF (REGENERA AL VUELO)
 // ============================================
 async function verPDF(id) {
-    const r = reportesCache.find(x => x.id === id);
-    if (!r) {
-        alert('Reporte no encontrado');
-        return;
-    }
-    
-    let pdfBase64 = r.pdfBase64;
-    if (!pdfBase64) {
-        const { doc, getDoc } = window.firebaseFns;
+    try {
+        const { doc, getDoc, collection, getDocs, query, orderBy } = window.firebaseFns;
         const snap = await getDoc(doc(window.firebaseDB, 'reportes', id));
-        if (snap.exists()) pdfBase64 = snap.data().pdfBase64;
+        if (!snap.exists()) {
+            alert('Reporte no encontrado');
+            return;
+        }
+        const r = snap.data();
+        
+        let fotosDelReporte = [];
+        try {
+            const q = query(collection(window.firebaseDB, 'reportes', id, 'fotos'), orderBy('orden'));
+            const fSnap = await getDocs(q);
+            fotosDelReporte = fSnap.docs.map(d => d.data().base64);
+        } catch (e) { console.error('Error cargando fotos:', e); }
+        
+        const pdfBlob = await generarPDFDesdeDatos(r, fotosDelReporte);
+        pdfActualBlob = pdfBlob;
+        pdfActualNombre = r.pdfNombre || `reporte_${r.tag}.pdf`;
+        document.getElementById('pdfTitulo').textContent = `${r.tag} - ${r.planta}`;
+        
+        const url = URL.createObjectURL(pdfBlob);
+        document.getElementById('pdfViewer').src = url;
+        document.getElementById('modalPDF').classList.remove('hidden-view');
+    } catch (e) {
+        console.error(e);
+        alert('Error al generar PDF: ' + e.message);
     }
-    
-    if (!pdfBase64) {
-        alert('Este reporte no tiene PDF asociado');
-        return;
-    }
-    
-    pdfActualNombre = r.pdfNombre || 'reporte.pdf';
-    document.getElementById('pdfTitulo').textContent = `${r.tag} - ${r.planta}`;
-    
-    const blob = base64ToBlob(pdfBase64);
-    const url = URL.createObjectURL(blob);
-    document.getElementById('pdfViewer').src = url;
-    document.getElementById('modalPDF').classList.remove('hidden-view');
 }
 
 function cerrarModalPDF() {
@@ -1283,28 +1609,30 @@ function cerrarModalPDF() {
 }
 
 function descargarPDFActual() {
-    const src = document.getElementById('pdfViewer').src;
-    if (!src) return;
-    const a = document.createElement('a');
-    a.href = src;
-    a.download = pdfActualNombre;
-    a.click();
+    if (pdfActualBlob) {
+        descargarBlob(pdfActualBlob, pdfActualNombre);
+    } else {
+        const src = document.getElementById('pdfViewer').src;
+        if (!src) return;
+        const a = document.createElement('a');
+        a.href = src;
+        a.download = pdfActualNombre;
+        a.click();
+    }
 }
 
 // ============================================
-// ELIMINAR
+// ELIMINAR REPORTE
 // ============================================
 async function eliminarReporte(id) {
     if (!confirm('⚠️ ¿Eliminar este reporte permanentemente?')) return;
     try {
         const { doc, deleteDoc, collection, getDocs } = window.firebaseFns;
         
-        // Borrar fotos de subcolección
         const fotos = await getDocs(collection(window.firebaseDB, 'reportes', id, 'fotos'));
         for (const f of fotos.docs) {
             await deleteDoc(doc(window.firebaseDB, 'reportes', id, 'fotos', f.id));
         }
-        // Borrar reporte
         await deleteDoc(doc(window.firebaseDB, 'reportes', id));
         
         alert('✅ Reporte eliminado');
@@ -1358,7 +1686,6 @@ function dictar(campoId, btn) {
 // ============================================
 // FIRMAS CANVAS
 // ============================================
-const firmas = {};
 function inicializarCanvas(id) {
     const canvas = document.getElementById(id);
     if (!canvas) return;
@@ -1398,7 +1725,6 @@ function inicializarCanvas(id) {
     canvas.addEventListener('touchstart', start, { passive: false });
     canvas.addEventListener('touchmove', move, { passive: false });
     canvas.addEventListener('touchend', end);
-    firmas[id] = { canvas, ctx };
 }
 
 function limpiarFirma(id) {
@@ -1438,7 +1764,7 @@ photoInput.addEventListener('change', async function(e) {
     }
     for (const file of files) {
         try {
-            const comprimida = await comprimirImagen(file, 1200, 0.7);
+            const comprimida = await comprimirImagen(file, 800, 0.55);
             fotosArray.push(comprimida);
             renderizarFotos();
         } catch (err) { console.error(err); }
@@ -1512,7 +1838,7 @@ function calcularTiempos() {
 }
 
 // ============================================
-// INICIALIZACIÓN DE CANVAS
+// INIT CANVAS
 // ============================================
 window.addEventListener('load', () => {
     setTimeout(() => {
