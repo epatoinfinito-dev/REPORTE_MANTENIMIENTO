@@ -5,7 +5,6 @@ const urlsToCache = [
   './manifest.json'
 ];
 
-// Instalar
 self.addEventListener('install', event => {
   self.skipWaiting();
   event.waitUntil(
@@ -16,15 +15,14 @@ self.addEventListener('install', event => {
   );
 });
 
-// Activar y limpiar cachés viejos
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
+    caches.keys().then(names => {
       return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('🗑️ Eliminando caché antigua:', cacheName);
-            return caches.delete(cacheName);
+        names.map(n => {
+          if (n !== CACHE_NAME) {
+            console.log('🗑️ Eliminando caché antigua:', n);
+            return caches.delete(n);
           }
         })
       );
@@ -32,24 +30,26 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch: cache-first con fallback a red
 self.addEventListener('fetch', event => {
   if (event.request.method !== 'GET') return;
-
+  
+  // NO cachear Firebase ni Google APIs
+  if (event.request.url.includes('firebase') || 
+      event.request.url.includes('googleapis') ||
+      event.request.url.includes('gstatic')) {
+    return fetch(event.request);
+  }
+  
   event.respondWith(
     caches.match(event.request).then(response => {
-      if (response) {
-        return response;
-      }
-      return fetch(event.request).then(networkResponse => {
-        if (networkResponse && networkResponse.status === 200 && 
+      if (response) return response;
+      return fetch(event.request).then(netRes => {
+        if (netRes && netRes.status === 200 && 
             (event.request.url.includes('cdn') || event.request.url.includes('fonts'))) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(cache => {
-            cache.put(event.request, responseClone);
-          });
+          const clone = netRes.clone();
+          caches.open(CACHE_NAME).then(c => c.put(event.request, clone));
         }
-        return networkResponse;
+        return netRes;
       }).catch(() => {
         if (event.request.destination === 'document') {
           return caches.match('./index.html');
@@ -57,4 +57,10 @@ self.addEventListener('fetch', event => {
       });
     })
   );
+});
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
