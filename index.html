@@ -82,7 +82,7 @@
         .relative-mic { position: relative; }
         .relative-mic textarea, .relative-mic input { padding-right: 50px; }
         
-        .firma-canvas { border: 2px dashed #cbd5e1; border-radius: 8px; background: white; cursor: crosshair; width: 100%; height: 120px; touch-action: none; }
+        .firma-canvas { border: 2px dashed #cbd5e1; border-radius: 8px; background: white; cursor: crosshair; width: 100%; height: 120px; touch-action: none; display: block; }
         .firma-container { position: relative; }
         .btn-limpiar-firma { position: absolute; top: 5px; right: 5px; background: #ef4444; color: white; border: none; border-radius: 6px; padding: 4px 10px; font-size: 0.75rem; cursor: pointer; }
         
@@ -145,7 +145,6 @@
             <p class="text-xs text-gray-400 mt-1">Diseñado por Eduardo Palacios</p>
         </div>
         
-        <!-- LOGIN -->
         <div id="formLogin">
             <h2 class="text-lg font-semibold mb-4">Iniciar Sesión</h2>
             <div class="space-y-3">
@@ -179,7 +178,6 @@
             </div>
         </div>
         
-        <!-- REGISTRO -->
         <div id="formRegistro" class="hidden-view">
             <h2 class="text-lg font-semibold mb-4">Crear Cuenta</h2>
             <div class="space-y-3">
@@ -220,7 +218,6 @@
             </div>
         </div>
         
-        <!-- RECUPERAR -->
         <div id="formRecuperar" class="hidden-view">
             <h2 class="text-lg font-semibold mb-4">Recuperar Contraseña</h2>
             <p class="text-sm text-gray-600 mb-4">
@@ -252,7 +249,7 @@
     
     <div class="bg-white rounded-xl shadow-sm p-4 mb-4 flex items-center justify-between flex-wrap gap-3">
         <div>
-            <h1 class="text-xl font-bold text-gray-800">📋 Reportes de Mantenimiento</h1>
+            <h1 class="text-xl font-bold text-gray-800">📋 Sistema de Gestión</h1>
             <p class="text-sm text-gray-500">Instrumentos - M-INST</p>
         </div>
         <div class="flex items-center gap-3">
@@ -271,6 +268,9 @@
         <div class="flex border-b">
             <button onclick="cambiarTab('reportes')" id="tabReportes" class="px-6 py-3 whitespace-nowrap tab-active" style="background:none;border:none;cursor:pointer;">
                 <i class="fas fa-list mr-2"></i> Reportes
+            </button>
+            <button onclick="cambiarTab('inventario')" id="tabInventario" class="px-6 py-3 whitespace-nowrap tab-inactive" style="background:none;border:none;cursor:pointer;">
+                <i class="fas fa-boxes mr-2"></i> Inventario
             </button>
             <button onclick="cambiarTab('estadisticas')" id="tabEstadisticas" class="px-6 py-3 whitespace-nowrap tab-inactive" style="background:none;border:none;cursor:pointer;">
                 <i class="fas fa-chart-bar mr-2"></i> Estadísticas
@@ -352,6 +352,49 @@
         <div id="sinReportes" class="text-center py-12 text-gray-400 hidden-view">
             <i class="fas fa-inbox text-5xl mb-3"></i>
             <p>No hay reportes que coincidan con la búsqueda</p>
+        </div>
+    </div>
+    
+    <!-- TAB INVENTARIO -->
+    <div id="contentInventario" class="hidden-view">
+        <div class="mb-6 flex flex-wrap gap-3 items-center justify-between">
+            <button onclick="abrirModalNuevoItem()" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i> Nuevo Ítem
+            </button>
+            <div class="text-sm text-gray-600">
+                <span id="contadorItems">0</span> ítems encontrados
+            </div>
+        </div>
+        
+        <div class="card">
+            <h3 class="font-bold text-gray-700 mb-3"><i class="fas fa-search"></i> Búsqueda</h3>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div class="md:col-span-2">
+                    <input type="text" id="busquedaInventario" class="input-modern" placeholder="Nombre, TAG, marca, modelo, serie, ubicación..." oninput="aplicarFiltrosInventario()">
+                </div>
+                <div>
+                    <select id="filtroUbicacionInventario" class="input-modern" onchange="aplicarFiltrosInventario()">
+                        <option value="">Todas las ubicaciones</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-white rounded-xl shadow-sm mb-4 overflow-x-auto">
+            <div class="flex border-b">
+                <button onclick="cambiarSubtabInventario('equipo')" id="subtabEquipo" class="px-6 py-3 whitespace-nowrap tab-active" style="background:none;border:none;cursor:pointer;">
+                    <i class="fas fa-microchip mr-2"></i> Equipos (<span id="countEquipos">0</span>)
+                </button>
+                <button onclick="cambiarSubtabInventario('consumible')" id="subtabConsumible" class="px-6 py-3 whitespace-nowrap tab-inactive" style="background:none;border:none;cursor:pointer;">
+                    <i class="fas fa-screwdriver-wrench mr-2"></i> Consumibles (<span id="countConsumibles">0</span>)
+                </button>
+            </div>
+        </div>
+        
+        <div id="listaInventario" class="space-y-3"></div>
+        <div id="sinInventario" class="text-center py-12 text-gray-400 hidden-view">
+            <i class="fas fa-box-open text-5xl mb-3"></i>
+            <p>No hay ítems en esta categoría</p>
         </div>
     </div>
     
@@ -612,7 +655,197 @@
 </div>
 
 <!-- ============================================ -->
-<!-- PLANTILLA PDF (IDÉNTICA AL FORMATO)          -->
+<!-- MODAL NUEVO ITEM INVENTARIO                  -->
+<!-- ============================================ -->
+<div id="modalNuevoItem" class="hidden-view modal-overlay">
+    <div class="bg-white rounded-lg w-full max-w-lg" style="max-height: 90vh; overflow-y: auto;">
+        <div class="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+            <h3 class="font-bold text-gray-800" id="tituloModalItem">➕ Nuevo Ítem</h3>
+            <button onclick="cerrarModalItem()" class="text-gray-500 hover:text-red-500" style="background:none;border:none;cursor:pointer;font-size:1.5rem;">&times;</button>
+        </div>
+        <div class="p-4 space-y-4">
+            
+            <div id="selectorTipoItem">
+                <label class="label-modern">¿Qué tipo de ítem vas a agregar?</label>
+                <div class="grid grid-cols-2 gap-3 mt-2">
+                    <button type="button" onclick="seleccionarTipoItem('equipo')" class="p-4 border-2 rounded-lg hover:bg-blue-50 text-center transition" style="background:none;cursor:pointer;border-color:#d1d5db;">
+                        <i class="fas fa-microchip text-3xl text-blue-600 mb-2"></i>
+                        <div class="font-semibold">Equipo</div>
+                        <div class="text-xs text-gray-500">Instrumentación</div>
+                    </button>
+                    <button type="button" onclick="seleccionarTipoItem('consumible')" class="p-4 border-2 rounded-lg hover:bg-orange-50 text-center transition" style="background:none;cursor:pointer;border-color:#d1d5db;">
+                        <i class="fas fa-screwdriver-wrench text-3xl text-orange-600 mb-2"></i>
+                        <div class="font-semibold">Consumible</div>
+                        <div class="text-xs text-gray-500">Material / Insumo</div>
+                    </button>
+                </div>
+            </div>
+            
+            <div id="formularioItem" class="hidden-view space-y-3">
+                <input type="hidden" id="itemTipo" value="">
+                <input type="hidden" id="itemId" value="">
+                
+                <div>
+                    <label class="label-modern">Nombre *</label>
+                    <input type="text" id="itemNombre" class="input-modern" placeholder="Ej: Transmisor de presión">
+                </div>
+                
+                <div id="camposEquipo" class="space-y-3 hidden-view">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="label-modern">TAG / Código</label>
+                            <input type="text" id="itemTag" class="input-modern" placeholder="Ej: PT-1001">
+                        </div>
+                        <div>
+                            <label class="label-modern">Estado</label>
+                            <select id="itemEstado" class="input-modern">
+                                <option value="">Seleccione...</option>
+                                <option value="Nuevo">🟢 Nuevo</option>
+                                <option value="Usado">🟡 Usado</option>
+                                <option value="Reparado">🔵 Reparado</option>
+                                <option value="En revisión">🔴 En revisión</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="label-modern">Marca</label>
+                            <input type="text" id="itemMarca" class="input-modern" placeholder="Ej: Rosemount">
+                        </div>
+                        <div>
+                            <label class="label-modern">Modelo</label>
+                            <input type="text" id="itemModelo" class="input-modern" placeholder="Ej: 3051CD">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="label-modern">Serie</label>
+                            <input type="text" id="itemSerie" class="input-modern" placeholder="Ej: SN-12345">
+                        </div>
+                        <div>
+                            <label class="label-modern">Rango</label>
+                            <input type="text" id="itemRango" class="input-modern" placeholder="Ej: 0-100 psi">
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="camposConsumible" class="space-y-3 hidden-view">
+                    <div>
+                        <label class="label-modern">Categoría</label>
+                        <input type="text" id="itemCategoria" class="input-modern" placeholder="Ej: Tornillería, Sellos, Cables">
+                    </div>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="label-modern">Cantidad *</label>
+                        <input type="number" id="itemCantidad" class="input-modern" min="0" value="1">
+                    </div>
+                    <div id="wrapperUnidad">
+                        <label class="label-modern" id="labelUnidad">Unidad</label>
+                        <select id="itemUnidad" class="input-modern">
+                            <option value="unidad">Unidad</option>
+                            <option value="metro">Metro</option>
+                            <option value="kg">Kilogramo</option>
+                            <option value="litro">Litro</option>
+                            <option value="caja">Caja</option>
+                            <option value="rollo">Rollo</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="label-modern">Ubicación *</label>
+                    <input type="text" id="itemUbicacion" class="input-modern" list="listaUbicaciones" placeholder="Ej: Bodega 1 - Estante A">
+                    <datalist id="listaUbicaciones"></datalist>
+                </div>
+                
+                <div>
+                    <label class="label-modern">Notas</label>
+                    <textarea id="itemNotas" class="input-modern" rows="2" placeholder="Información adicional..."></textarea>
+                </div>
+                
+                <div>
+                    <label class="label-modern">Foto (opcional)</label>
+                    <input type="file" id="itemFotoInput" accept="image/*" class="hidden">
+                    <div id="itemFotoPreview" class="hidden-view">
+                        <img id="itemFotoImg" class="w-full h-32 object-cover rounded-lg border">
+                        <button type="button" onclick="eliminarFotoItem()" class="text-red-500 text-sm mt-1" style="background:none;border:none;cursor:pointer;">
+                            <i class="fas fa-trash"></i> Eliminar foto
+                        </button>
+                    </div>
+                    <button type="button" id="btnSubirFotoItem" onclick="document.getElementById('itemFotoInput').click()" class="w-full border-2 border-dashed border-gray-300 rounded-lg p-3 text-center text-gray-500 hover:bg-gray-50" style="background:none;cursor:pointer;">
+                        <i class="fas fa-camera mr-2"></i> Subir foto
+                    </button>
+                </div>
+                
+                <div id="itemError" class="text-red-500 text-sm text-center hidden-view"></div>
+                
+                <div class="flex gap-2 pt-2">
+                    <button type="button" onclick="cerrarModalItem()" class="btn-secondary flex-1">Cancelar</button>
+                    <button type="button" onclick="guardarItem()" class="btn-primary flex-1" id="btnGuardarItem">
+                        <i class="fas fa-save mr-2"></i> Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL MOVIMIENTO -->
+<div id="modalMovimiento" class="hidden-view modal-overlay">
+    <div class="bg-white rounded-lg w-full max-w-md">
+        <div class="flex items-center justify-between p-4 border-b">
+            <h3 class="font-bold text-gray-800" id="tituloModalMovimiento">Movimiento</h3>
+            <button onclick="cerrarModalMovimiento()" class="text-gray-500 hover:text-red-500" style="background:none;border:none;cursor:pointer;font-size:1.5rem;">&times;</button>
+        </div>
+        <div class="p-4 space-y-3">
+            <div class="bg-gray-50 p-3 rounded-lg">
+                <div class="font-semibold" id="nombreItemMovimiento">-</div>
+                <div class="text-sm text-gray-600">Disponible: <span id="cantidadItemMovimiento">0</span></div>
+            </div>
+            
+            <div>
+                <label class="label-modern">Cantidad *</label>
+                <input type="number" id="movCantidad" class="input-modern" min="1" value="1">
+            </div>
+            
+            <div>
+                <label class="label-modern">Motivo</label>
+                <input type="text" id="movMotivo" class="input-modern" placeholder="Ej: Se usó para repuesto en TAG PT-1001">
+            </div>
+            
+            <div id="movError" class="text-red-500 text-sm hidden-view"></div>
+            
+            <div class="flex gap-2 pt-2">
+                <button type="button" onclick="cerrarModalMovimiento()" class="btn-secondary flex-1">Cancelar</button>
+                <button type="button" onclick="confirmarMovimiento()" class="btn-primary flex-1" id="btnConfirmarMovimiento">
+                    Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL HISTORIAL -->
+<div id="modalHistorial" class="hidden-view modal-overlay">
+    <div class="bg-white rounded-lg w-full max-w-2xl" style="max-height: 85vh; overflow-y: auto;">
+        <div class="flex items-center justify-between p-4 border-b sticky top-0 bg-white z-10">
+            <h3 class="font-bold text-gray-800">📋 Historial de Movimientos</h3>
+            <button onclick="cerrarModalHistorial()" class="text-gray-500 hover:text-red-500" style="background:none;border:none;cursor:pointer;font-size:1.5rem;">&times;</button>
+        </div>
+        <div class="p-4">
+            <div class="mb-4 pb-3 border-b">
+                <div class="font-semibold text-lg" id="historialNombreItem">-</div>
+                <div class="text-sm text-gray-500">Cantidad actual: <span id="historialCantidadActual">0</span></div>
+            </div>
+            <div id="listaMovimientos"></div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================ -->
+<!-- PLANTILLA PDF                                -->
 <!-- ============================================ -->
 <div id="pdf-template">
     <table class="pdf-table">
@@ -728,7 +961,7 @@
 // ============================================
 // CONSTANTES
 // ============================================
-const CODIGO_INVITACION = "MANT-2026"; // ⚠️ Cambia este código
+const CODIGO_INVITACION = "MANT-2026";
 
 // ============================================
 // ESTADO GLOBAL
@@ -736,10 +969,16 @@ const CODIGO_INVITACION = "MANT-2026"; // ⚠️ Cambia este código
 let usuarioActual = null;
 let reportesCache = [];
 let usuariosCache = [];
+let inventarioCache = [];
 let fotosArray = [];
 let reporteEditando = null;
 let pdfActualBlob = null;
 let pdfActualNombre = "";
+let subtabInventarioActual = 'equipo';
+let tipoItemActual = null;
+let fotoItemActual = null;
+let itemMovimientoActual = null;
+let tipoMovimientoActual = null;
 
 // ============================================
 // INICIALIZACIÓN
@@ -884,13 +1123,9 @@ async function cerrarSesion() {
     }
 }
 
-// ============================================
-// VISOR DE CONTRASEÑA
-// ============================================
 function togglePassword(inputId, btn) {
     const input = document.getElementById(inputId);
     const icon = btn.querySelector('i');
-    
     if (input.type === 'password') {
         input.type = 'text';
         icon.classList.remove('fa-eye');
@@ -902,9 +1137,6 @@ function togglePassword(inputId, btn) {
     }
 }
 
-// ============================================
-// FUERZA DE CONTRASEÑA
-// ============================================
 function evaluarFuerzaPassword(password) {
     const bar = document.getElementById('fuerzaBar');
     const texto = document.getElementById('fuerzaTexto');
@@ -937,9 +1169,6 @@ function evaluarFuerzaPassword(password) {
     texto.style.color = nivel.color;
 }
 
-// ============================================
-// RECUPERACIÓN DE CONTRASEÑA
-// ============================================
 function mostrarRecuperar() {
     document.getElementById('formLogin').classList.add('hidden-view');
     document.getElementById('formRegistro').classList.add('hidden-view');
@@ -1031,9 +1260,11 @@ function mostrarDashboard() {
 }
 
 function cambiarTab(tab) {
-    ['reportes', 'estadisticas', 'usuarios'].forEach(t => {
+    ['reportes', 'inventario', 'estadisticas', 'usuarios'].forEach(t => {
         const content = document.getElementById('content' + t.charAt(0).toUpperCase() + t.slice(1));
         const tabBtn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+        
+        if (!content || !tabBtn) return;
         
         if (t === tab) {
             content.classList.remove('hidden-view');
@@ -1046,6 +1277,7 @@ function cambiarTab(tab) {
     
     if (tab === 'estadisticas') calcularEstadisticas();
     if (tab === 'usuarios') cargarUsuarios();
+    if (tab === 'inventario') cargarInventario();
 }
 
 function cancelarFormulario() {
@@ -1354,7 +1586,7 @@ async function eliminarUsuario(uid, nombre) {
     try {
         const { doc, deleteDoc } = window.firebaseFns;
         await deleteDoc(doc(window.firebaseDB, 'usuarios', uid));
-        alert('✅ Usuario eliminado. Nota: la cuenta de Authentication debe eliminarse manualmente desde Firebase Console.');
+        alert('✅ Usuario eliminado.');
         cargarUsuarios();
     } catch (e) {
         console.error(e);
@@ -1371,28 +1603,15 @@ function exportarCSV() {
         return;
     }
     
-    const headers = ['Fecha', 'Tag', 'Planta', 'Aviso', 'Orden', 'Descripción', 'Causa', 'Estado', 'Diagnóstico', 'Trabajos', 'Repuestos', 'Crítico', 'Análisis', 'Supervisor Op', 'Observaciones', 'Técnico', 'Supervisor'];
+    const headers = ['Fecha', 'Tag', 'Planta', 'Aviso', 'Orden', 'Descripción', 'Causa', 'Estado', 'Diagnóstico', 'Trabajos', 'Repuestos', 'Crítico', 'Análisis', 'Supervisor Op', 'Observaciones', 'Técnico'];
     
     const filas = reportesCache.map(r => {
         const fecha = r.fechaCreacion?.toDate ? r.fechaCreacion.toDate() : new Date(r.fechaCreacion || 0);
         return [
             fecha.toLocaleString('es-CO'),
-            r.tag || '',
-            r.planta || '',
-            r.aviso || '',
-            r.orden || '',
-            r.descripcion || '',
-            r.causa || '',
-            r.estado || '',
-            r.diagnostico || '',
-            r.trabajos || '',
-            r.repuestos || '',
-            r.critico || '',
-            r.analisis || '',
-            r.supervisorOp || '',
-            r.observaciones || '',
-            r.autorNombre || '',
-            r.nombreSupervisor || ''
+            r.tag || '', r.planta || '', r.aviso || '', r.orden || '', r.descripcion || '',
+            r.causa || '', r.estado || '', r.diagnostico || '', r.trabajos || '', r.repuestos || '',
+            r.critico || '', r.analisis || '', r.supervisorOp || '', r.observaciones || '', r.autorNombre || ''
         ];
     });
     
@@ -1419,6 +1638,11 @@ function abrirFormularioNuevo() {
     ocultarTodas();
     document.getElementById('vistaFormulario').classList.remove('hidden-view');
     document.getElementById('nombreTecnico').value = usuarioActual.nombre || '';
+    
+    setTimeout(() => {
+        inicializarCanvas('firmaTecnico');
+        inicializarCanvas('firmaSupervisor');
+    }, 100);
 }
 
 async function editarReporte(id) {
@@ -1457,21 +1681,23 @@ async function editarReporte(id) {
     } catch (e) { console.error(e); }
     renderizarFotos();
     
-    if (r.firmaTecnico) dibujarFirma('firmaTecnico', r.firmaTecnico); else limpiarFirma('firmaTecnico');
-    if (r.firmaSupervisor) dibujarFirma('firmaSupervisor', r.firmaSupervisor); else limpiarFirma('firmaSupervisor');
-    
     calcularTiempos();
     
     ocultarTodas();
     document.getElementById('vistaFormulario').classList.remove('hidden-view');
+    
+    setTimeout(() => {
+        inicializarCanvas('firmaTecnico');
+        inicializarCanvas('firmaSupervisor');
+        if (r.firmaTecnico) dibujarFirma('firmaTecnico', r.firmaTecnico);
+        if (r.firmaSupervisor) dibujarFirma('firmaSupervisor', r.firmaSupervisor);
+    }, 100);
 }
 
 function limpiarFormularioCampos() {
     document.getElementById('captureForm').reset();
     fotosArray = [];
     renderizarFotos();
-    limpiarFirma('firmaTecnico');
-    limpiarFirma('firmaSupervisor');
     document.getElementById('displayTotalFuera').innerText = '00:00 HH:MM';
     document.getElementById('displayTotalNeto').innerText = '00:00 HH:MM';
 }
@@ -1554,10 +1780,7 @@ async function guardarYGenerarPDF() {
         
         for (let i = 0; i < fotosArray.length; i++) {
             const pesoFotoKB = Math.round(fotosArray[i].length / 1024);
-            if (pesoFotoKB > 300) {
-                console.warn(`Foto ${i+1} muy grande (${pesoFotoKB} KB), se salta`);
-                continue;
-            }
+            if (pesoFotoKB > 300) continue;
             const fotoRef = doc(collection(window.firebaseDB, 'reportes', reporteIdFinal, 'fotos'));
             await setDoc(fotoRef, {
                 base64: fotosArray[i],
@@ -1773,6 +1996,533 @@ async function eliminarReporte(id) {
 }
 
 // ============================================
+// MÓDULO INVENTARIO
+// ============================================
+async function cargarInventario() {
+    try {
+        const { collection, getDocs } = window.firebaseFns;
+        const snap = await getDocs(collection(window.firebaseDB, 'inventario'));
+        inventarioCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        aplicarFiltrosInventario();
+        cargarUbicacionesDatalist();
+    } catch (e) {
+        console.error('Error cargando inventario:', e);
+    }
+}
+
+function cargarUbicacionesDatalist() {
+    const ubicaciones = [...new Set(inventarioCache.map(i => i.ubicacion).filter(Boolean))].sort();
+    const datalist = document.getElementById('listaUbicaciones');
+    if (datalist) {
+        datalist.innerHTML = ubicaciones.map(u => `<option value="${u}">`).join('');
+    }
+    
+    const selectFiltro = document.getElementById('filtroUbicacionInventario');
+    if (selectFiltro) {
+        selectFiltro.innerHTML = '<option value="">Todas las ubicaciones</option>' +
+            ubicaciones.map(u => `<option value="${u}">${u}</option>`).join('');
+    }
+}
+
+function cambiarSubtabInventario(subtab) {
+    subtabInventarioActual = subtab;
+    if (subtab === 'equipo') {
+        document.getElementById('subtabEquipo').className = 'px-6 py-3 whitespace-nowrap tab-active';
+        document.getElementById('subtabConsumible').className = 'px-6 py-3 whitespace-nowrap tab-inactive';
+    } else {
+        document.getElementById('subtabEquipo').className = 'px-6 py-3 whitespace-nowrap tab-inactive';
+        document.getElementById('subtabConsumible').className = 'px-6 py-3 whitespace-nowrap tab-active';
+    }
+    aplicarFiltrosInventario();
+}
+
+function aplicarFiltrosInventario() {
+    const busqueda = (document.getElementById('busquedaInventario')?.value || '').toLowerCase().trim();
+    const ubicacion = document.getElementById('filtroUbicacionInventario')?.value || '';
+    
+    let filtrados = inventarioCache.filter(i => i.tipo === subtabInventarioActual);
+    
+    if (busqueda) {
+        filtrados = filtrados.filter(i => {
+            const campos = [i.nombre, i.tag, i.marca, i.modelo, i.serie, i.rango, i.ubicacion, i.notas, i.categoria, i.estado]
+                .filter(Boolean).map(c => String(c).toLowerCase());
+            return campos.some(c => c.includes(busqueda));
+        });
+    }
+    
+    if (ubicacion) filtrados = filtrados.filter(i => i.ubicacion === ubicacion);
+    
+    filtrados.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || ''));
+    
+    renderizarInventario(filtrados);
+    
+    document.getElementById('countEquipos').textContent = inventarioCache.filter(i => i.tipo === 'equipo').length;
+    document.getElementById('countConsumibles').textContent = inventarioCache.filter(i => i.tipo === 'consumible').length;
+    document.getElementById('contadorItems').textContent = filtrados.length;
+}
+
+function renderizarInventario(items) {
+    const cont = document.getElementById('listaInventario');
+    const vacio = document.getElementById('sinInventario');
+    
+    if (items.length === 0) {
+        cont.innerHTML = '';
+        vacio.classList.remove('hidden-view');
+        return;
+    }
+    vacio.classList.add('hidden-view');
+    
+    cont.innerHTML = items.map(item => {
+        const esEquipo = item.tipo === 'equipo';
+        const puedeEliminar = usuarioActual.rol === 'admin';
+        const cantidad = item.cantidad || 0;
+        const unidad = item.unidad || 'unidad';
+        const unidadTexto = cantidad === 1 ? unidad : unidad + 's';
+        
+        let detalles = [];
+        if (esEquipo) {
+            if (item.marca) detalles.push(`<strong>Marca:</strong> ${item.marca}`);
+            if (item.modelo) detalles.push(`<strong>Modelo:</strong> ${item.modelo}`);
+            if (item.serie) detalles.push(`<strong>Serie:</strong> ${item.serie}`);
+            if (item.rango) detalles.push(`<strong>Rango:</strong> ${item.rango}`);
+        } else {
+            if (item.categoria) detalles.push(`<strong>Categoría:</strong> ${item.categoria}`);
+        }
+        
+        const estadoBadge = item.estado ? `<span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">${item.estado}</span>` : '';
+        const tagBadge = item.tag ? `<span class="text-xs bg-gray-100 text-gray-700 px-2 py-0.5 rounded font-mono">${item.tag}</span>` : '';
+        
+        return `
+        <div class="reporte-card ${esEquipo ? 'border-l-blue-500' : 'border-l-orange-500'}">
+            <div class="flex flex-wrap items-start justify-between gap-2 mb-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                        <span class="font-bold text-gray-800">${esEquipo ? '🔧' : '🔩'} ${item.nombre || 'Sin nombre'}</span>
+                        ${tagBadge}
+                        ${estadoBadge}
+                    </div>
+                    ${detalles.length ? `<div class="text-xs text-gray-600 flex flex-wrap gap-3 mb-1">${detalles.join(' • ')}</div>` : ''}
+                    <div class="text-xs text-gray-500 mt-1">
+                        <i class="fas fa-map-marker-alt"></i> ${item.ubicacion || 'Sin ubicación'}
+                        ${item.notas ? ` • ${item.notas}` : ''}
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-2xl font-bold ${cantidad <= 0 ? 'text-red-500' : cantidad <= 2 ? 'text-orange-500' : 'text-green-600'}">
+                        ${cantidad}
+                    </div>
+                    <div class="text-xs text-gray-500">${unidadTexto}</div>
+                </div>
+            </div>
+            
+            <div class="flex gap-2 flex-wrap mt-3 pt-3 border-t">
+                <button onclick="abrirModalMovimiento('${item.id}', 'entrada')" class="btn-success">
+                    <i class="fas fa-plus"></i> Reponer
+                </button>
+                <button onclick="abrirModalMovimiento('${item.id}', 'salida')" class="btn-warning" ${cantidad <= 0 ? 'disabled style="opacity:0.5"' : ''}>
+                    <i class="fas fa-minus"></i> Descontar
+                </button>
+                <button onclick="abrirModalHistorial('${item.id}')" class="btn-secondary" style="padding: 8px 12px; font-size: 0.85rem;">
+                    <i class="fas fa-history"></i>
+                </button>
+                <button onclick="abrirModalEditarItem('${item.id}')" class="btn-secondary" style="padding: 8px 12px; font-size: 0.85rem;">
+                    <i class="fas fa-edit"></i>
+                </button>
+                ${puedeEliminar ? `<button onclick="eliminarItem('${item.id}', '${(item.nombre || '').replace(/'/g, "\\'")}')" class="btn-danger"><i class="fas fa-trash"></i></button>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function abrirModalNuevoItem() {
+    document.getElementById('tituloModalItem').textContent = '➕ Nuevo Ítem';
+    document.getElementById('selectorTipoItem').classList.remove('hidden-view');
+    document.getElementById('formularioItem').classList.add('hidden-view');
+    document.getElementById('itemId').value = '';
+    document.getElementById('itemTipo').value = '';
+    tipoItemActual = null;
+    fotoItemActual = null;
+    limpiarFormularioItem();
+    document.getElementById('modalNuevoItem').classList.remove('hidden-view');
+}
+
+async function abrirModalEditarItem(id) {
+    const item = inventarioCache.find(i => i.id === id);
+    if (!item) return;
+    
+    document.getElementById('tituloModalItem').textContent = '✏️ Editar Ítem';
+    document.getElementById('selectorTipoItem').classList.add('hidden-view');
+    document.getElementById('formularioItem').classList.remove('hidden-view');
+    document.getElementById('itemId').value = id;
+    document.getElementById('itemTipo').value = item.tipo;
+    tipoItemActual = item.tipo;
+    fotoItemActual = item.foto || null;
+    
+    if (item.tipo === 'equipo') {
+        document.getElementById('camposEquipo').classList.remove('hidden-view');
+        document.getElementById('camposConsumible').classList.add('hidden-view');
+        document.getElementById('wrapperUnidad').classList.add('hidden-view');
+    } else {
+        document.getElementById('camposEquipo').classList.add('hidden-view');
+        document.getElementById('camposConsumible').classList.remove('hidden-view');
+        document.getElementById('wrapperUnidad').classList.remove('hidden-view');
+    }
+    
+    document.getElementById('itemNombre').value = item.nombre || '';
+    document.getElementById('itemTag').value = item.tag || '';
+    document.getElementById('itemEstado').value = item.estado || '';
+    document.getElementById('itemMarca').value = item.marca || '';
+    document.getElementById('itemModelo').value = item.modelo || '';
+    document.getElementById('itemSerie').value = item.serie || '';
+    document.getElementById('itemRango').value = item.rango || '';
+    document.getElementById('itemCategoria').value = item.categoria || '';
+    document.getElementById('itemCantidad').value = item.cantidad || 0;
+    document.getElementById('itemUnidad').value = item.unidad || 'unidad';
+    document.getElementById('itemUbicacion').value = item.ubicacion || '';
+    document.getElementById('itemNotas').value = item.notas || '';
+    
+    if (fotoItemActual) {
+        document.getElementById('itemFotoImg').src = fotoItemActual;
+        document.getElementById('itemFotoPreview').classList.remove('hidden-view');
+        document.getElementById('btnSubirFotoItem').classList.add('hidden-view');
+    } else {
+        document.getElementById('itemFotoPreview').classList.add('hidden-view');
+        document.getElementById('btnSubirFotoItem').classList.remove('hidden-view');
+    }
+    
+    document.getElementById('modalNuevoItem').classList.remove('hidden-view');
+}
+
+function seleccionarTipoItem(tipo) {
+    tipoItemActual = tipo;
+    document.getElementById('itemTipo').value = tipo;
+    document.getElementById('selectorTipoItem').classList.add('hidden-view');
+    document.getElementById('formularioItem').classList.remove('hidden-view');
+    
+    if (tipo === 'equipo') {
+        document.getElementById('camposEquipo').classList.remove('hidden-view');
+        document.getElementById('camposConsumible').classList.add('hidden-view');
+        document.getElementById('wrapperUnidad').classList.add('hidden-view');
+    } else {
+        document.getElementById('camposEquipo').classList.add('hidden-view');
+        document.getElementById('camposConsumible').classList.remove('hidden-view');
+        document.getElementById('wrapperUnidad').classList.remove('hidden-view');
+    }
+}
+
+function cerrarModalItem() {
+    document.getElementById('modalNuevoItem').classList.add('hidden-view');
+    limpiarFormularioItem();
+}
+
+function limpiarFormularioItem() {
+    ['itemNombre', 'itemTag', 'itemMarca', 'itemModelo', 'itemSerie', 'itemRango', 'itemCategoria', 'itemUbicacion', 'itemNotas'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+    document.getElementById('itemCantidad').value = 1;
+    document.getElementById('itemUnidad').value = 'unidad';
+    document.getElementById('itemEstado').value = '';
+    document.getElementById('itemError').classList.add('hidden-view');
+    fotoItemActual = null;
+    document.getElementById('itemFotoPreview').classList.add('hidden-view');
+    document.getElementById('btnSubirFotoItem').classList.remove('hidden-view');
+}
+
+document.getElementById('itemFotoInput').addEventListener('change', async function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+        const comprimida = await comprimirImagen(file, 600, 0.6);
+        fotoItemActual = comprimida;
+        document.getElementById('itemFotoImg').src = comprimida;
+        document.getElementById('itemFotoPreview').classList.remove('hidden-view');
+        document.getElementById('btnSubirFotoItem').classList.add('hidden-view');
+    } catch (err) { console.error(err); }
+    this.value = '';
+});
+
+function eliminarFotoItem() {
+    fotoItemActual = null;
+    document.getElementById('itemFotoPreview').classList.add('hidden-view');
+    document.getElementById('btnSubirFotoItem').classList.remove('hidden-view');
+}
+
+async function guardarItem() {
+    const nombre = document.getElementById('itemNombre').value.trim();
+    const ubicacion = document.getElementById('itemUbicacion').value.trim();
+    const cantidad = parseInt(document.getElementById('itemCantidad').value) || 0;
+    const error = document.getElementById('itemError');
+    
+    if (!nombre) {
+        error.textContent = 'El nombre es obligatorio';
+        error.classList.remove('hidden-view');
+        return;
+    }
+    if (!ubicacion) {
+        error.textContent = 'La ubicación es obligatoria';
+        error.classList.remove('hidden-view');
+        return;
+    }
+    if (cantidad < 0) {
+        error.textContent = 'La cantidad no puede ser negativa';
+        error.classList.remove('hidden-view');
+        return;
+    }
+    
+    error.classList.add('hidden-view');
+    const btn = document.getElementById('btnGuardarItem');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...';
+    
+    try {
+        const { doc, setDoc, updateDoc, collection, serverTimestamp } = window.firebaseFns;
+        
+        const datos = {
+            tipo: tipoItemActual,
+            nombre: nombre,
+            ubicacion: ubicacion,
+            cantidad: cantidad,
+            notas: document.getElementById('itemNotas').value.trim(),
+            foto: fotoItemActual || null,
+            fechaModificacion: serverTimestamp()
+        };
+        
+        if (tipoItemActual === 'equipo') {
+            datos.tag = document.getElementById('itemTag').value.trim();
+            datos.estado = document.getElementById('itemEstado').value;
+            datos.marca = document.getElementById('itemMarca').value.trim();
+            datos.modelo = document.getElementById('itemModelo').value.trim();
+            datos.serie = document.getElementById('itemSerie').value.trim();
+            datos.rango = document.getElementById('itemRango').value.trim();
+            datos.unidad = 'unidad';
+        } else {
+            datos.categoria = document.getElementById('itemCategoria').value.trim();
+            datos.unidad = document.getElementById('itemUnidad').value;
+        }
+        
+        const itemId = document.getElementById('itemId').value;
+        
+        if (itemId) {
+            await updateDoc(doc(window.firebaseDB, 'inventario', itemId), datos);
+            alert('✅ Ítem actualizado');
+        } else {
+            datos.creadoPor = usuarioActual.uid;
+            datos.creadoPorNombre = usuarioActual.nombre || usuarioActual.email;
+            datos.fechaCreacion = serverTimestamp();
+            datos.fechaUltimoMovimiento = serverTimestamp();
+            const nuevoDoc = doc(collection(window.firebaseDB, 'inventario'));
+            await setDoc(nuevoDoc, datos);
+            alert('✅ Ítem agregado al inventario');
+        }
+        
+        cerrarModalItem();
+        cargarInventario();
+    } catch (e) {
+        console.error(e);
+        error.textContent = '❌ Error: ' + e.message;
+        error.classList.remove('hidden-view');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save mr-2"></i> Guardar';
+    }
+}
+
+function abrirModalMovimiento(itemId, tipo) {
+    const item = inventarioCache.find(i => i.id === itemId);
+    if (!item) return;
+    
+    itemMovimientoActual = itemId;
+    tipoMovimientoActual = tipo;
+    
+    document.getElementById('tituloModalMovimiento').innerHTML = tipo === 'entrada' 
+        ? '➕ Reponer stock' 
+        : '➖ Descontar del inventario';
+    document.getElementById('nombreItemMovimiento').textContent = item.nombre;
+    document.getElementById('cantidadItemMovimiento').textContent = `${item.cantidad} ${item.unidad || 'unidad'}`;
+    document.getElementById('movCantidad').value = 1;
+    document.getElementById('movCantidad').max = tipo === 'salida' ? item.cantidad : 99999;
+    document.getElementById('movMotivo').value = '';
+    document.getElementById('movError').classList.add('hidden-view');
+    
+    document.getElementById('modalMovimiento').classList.remove('hidden-view');
+}
+
+function cerrarModalMovimiento() {
+    document.getElementById('modalMovimiento').classList.add('hidden-view');
+    itemMovimientoActual = null;
+    tipoMovimientoActual = null;
+}
+
+async function confirmarMovimiento() {
+    const item = inventarioCache.find(i => i.id === itemMovimientoActual);
+    if (!item) return;
+    
+    const cantidad = parseInt(document.getElementById('movCantidad').value) || 0;
+    const motivo = document.getElementById('movMotivo').value.trim();
+    const error = document.getElementById('movError');
+    
+    if (cantidad <= 0) {
+        error.textContent = 'La cantidad debe ser mayor a 0';
+        error.classList.remove('hidden-view');
+        return;
+    }
+    
+    if (tipoMovimientoActual === 'salida' && cantidad > item.cantidad) {
+        error.textContent = `No puedes descontar más de lo disponible (${item.cantidad})`;
+        error.classList.remove('hidden-view');
+        return;
+    }
+    
+    error.classList.add('hidden-view');
+    const btn = document.getElementById('btnConfirmarMovimiento');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Procesando...';
+    
+    try {
+        const { doc, setDoc, updateDoc, collection, serverTimestamp } = window.firebaseFns;
+        
+        const nuevaCantidad = tipoMovimientoActual === 'entrada' 
+            ? item.cantidad + cantidad 
+            : item.cantidad - cantidad;
+        
+        await updateDoc(doc(window.firebaseDB, 'inventario', itemMovimientoActual), {
+            cantidad: nuevaCantidad,
+            fechaUltimoMovimiento: serverTimestamp()
+        });
+        
+        const movRef = doc(collection(window.firebaseDB, 'inventario', itemMovimientoActual, 'movimientos'));
+        await setDoc(movRef, {
+            tipo: tipoMovimientoActual,
+            cantidad: cantidad,
+            cantidadAntes: item.cantidad,
+            cantidadDespues: nuevaCantidad,
+            motivo: motivo,
+            usuarioId: usuarioActual.uid,
+            usuarioNombre: usuarioActual.nombre || usuarioActual.email,
+            fecha: serverTimestamp()
+        });
+        
+        alert(`✅ ${tipoMovimientoActual === 'entrada' ? 'Repuesto' : 'Descontado'} correctamente. Nueva cantidad: ${nuevaCantidad}`);
+        cerrarModalMovimiento();
+        cargarInventario();
+    } catch (e) {
+        console.error(e);
+        error.textContent = '❌ Error: ' + e.message;
+        error.classList.remove('hidden-view');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Confirmar';
+    }
+}
+
+async function abrirModalHistorial(itemId) {
+    const item = inventarioCache.find(i => i.id === itemId);
+    if (!item) return;
+    
+    document.getElementById('historialNombreItem').textContent = item.nombre;
+    document.getElementById('historialCantidadActual').textContent = `${item.cantidad} ${item.unidad || 'unidad'}`;
+    document.getElementById('listaMovimientos').innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin text-gray-400"></i></div>';
+    document.getElementById('modalHistorial').classList.remove('hidden-view');
+    
+    try {
+        const { collection, getDocs, query, orderBy } = window.firebaseFns;
+        const q = query(collection(window.firebaseDB, 'inventario', itemId, 'movimientos'), orderBy('fecha', 'desc'));
+        const snap = await getDocs(q);
+        
+        if (snap.empty) {
+            document.getElementById('listaMovimientos').innerHTML = '<p class="text-gray-400 text-center py-4">No hay movimientos registrados</p>';
+            return;
+        }
+        
+        document.getElementById('listaMovimientos').innerHTML = snap.docs.map(d => {
+            const m = d.data();
+            const fecha = m.fecha?.toDate ? m.fecha.toDate() : new Date(m.fecha || 0);
+            const fechaStr = fecha.toLocaleString('es-CO', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const esEntrada = m.tipo === 'entrada';
+            
+            return `
+            <div class="border-l-4 ${esEntrada ? 'border-green-500' : 'border-red-500'} pl-3 py-2 mb-3 bg-gray-50 rounded">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <span class="font-semibold ${esEntrada ? 'text-green-700' : 'text-red-700'}">
+                            ${esEntrada ? '➕' : '➖'} ${m.cantidad} ${item.unidad || 'unidad'}
+                        </span>
+                        <span class="text-sm text-gray-600 ml-2">(${m.cantidadAntes} → ${m.cantidadDespues})</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${fechaStr}</span>
+                </div>
+                ${m.motivo ? `<div class="text-sm text-gray-700 mt-1">${m.motivo}</div>` : ''}
+                <div class="text-xs text-gray-500 mt-1"><i class="fas fa-user"></i> ${m.usuarioNombre || 'Anónimo'}</div>
+            </div>`;
+        }).join('');
+    } catch (e) {
+        console.error(e);
+        try {
+            const { collection, getDocs } = window.firebaseFns;
+            const snap = await getDocs(collection(window.firebaseDB, 'inventario', itemId, 'movimientos'));
+            const movs = snap.docs.map(d => d.data()).sort((a, b) => {
+                const fa = a.fecha?.toDate ? a.fecha.toDate() : new Date(a.fecha || 0);
+                const fb = b.fecha?.toDate ? b.fecha.toDate() : new Date(b.fecha || 0);
+                return fb - fa;
+            });
+            
+            if (movs.length === 0) {
+                document.getElementById('listaMovimientos').innerHTML = '<p class="text-gray-400 text-center py-4">No hay movimientos</p>';
+                return;
+            }
+            
+            document.getElementById('listaMovimientos').innerHTML = movs.map(m => {
+                const fecha = m.fecha?.toDate ? m.fecha.toDate() : new Date(m.fecha || 0);
+                const fechaStr = fecha.toLocaleString('es-CO');
+                const esEntrada = m.tipo === 'entrada';
+                return `
+                <div class="border-l-4 ${esEntrada ? 'border-green-500' : 'border-red-500'} pl-3 py-2 mb-3 bg-gray-50 rounded">
+                    <div class="flex justify-between">
+                        <span class="font-semibold ${esEntrada ? 'text-green-700' : 'text-red-700'}">
+                            ${esEntrada ? '➕' : '➖'} ${m.cantidad}
+                        </span>
+                        <span class="text-xs text-gray-500">${fechaStr}</span>
+                    </div>
+                    ${m.motivo ? `<div class="text-sm mt-1">${m.motivo}</div>` : ''}
+                    <div class="text-xs text-gray-500 mt-1">${m.usuarioNombre || ''}</div>
+                </div>`;
+            }).join('');
+        } catch (e2) {
+            document.getElementById('listaMovimientos').innerHTML = '<p class="text-red-500 text-center py-4">Error al cargar movimientos</p>';
+        }
+    }
+}
+
+function cerrarModalHistorial() {
+    document.getElementById('modalHistorial').classList.add('hidden-view');
+}
+
+async function eliminarItem(id, nombre) {
+    if (usuarioActual.rol !== 'admin') {
+        alert('Solo los administradores pueden eliminar ítems');
+        return;
+    }
+    if (!confirm(`⚠️ ¿Eliminar permanentemente "${nombre}" del inventario?`)) return;
+    
+    try {
+        const { doc, deleteDoc, collection, getDocs } = window.firebaseFns;
+        
+        const movs = await getDocs(collection(window.firebaseDB, 'inventario', id, 'movimientos'));
+        for (const m of movs.docs) {
+            await deleteDoc(doc(window.firebaseDB, 'inventario', id, 'movimientos', m.id));
+        }
+        await deleteDoc(doc(window.firebaseDB, 'inventario', id));
+        
+        alert('✅ Ítem eliminado');
+        cargarInventario();
+    } catch (e) {
+        console.error(e);
+        alert('❌ Error: ' + e.message);
+    }
+}
+
+// ============================================
 // DICTADO POR VOZ
 // ============================================
 let recognition = null;
@@ -1813,47 +2563,104 @@ function dictar(campoId, btn) {
 }
 
 // ============================================
-// FIRMAS CANVAS
+// FIRMAS CANVAS (ARREGLADA PARA DEDO)
 // ============================================
 function inicializarCanvas(id) {
     const canvas = document.getElementById(id);
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    function resize() {
-        const rect = canvas.getBoundingClientRect();
-        canvas.width = rect.width * 2;
-        canvas.height = rect.height * 2;
-        ctx.scale(2, 2);
-        ctx.lineWidth = 2;
-        ctx.lineCap = 'round';
-        ctx.strokeStyle = '#1e3a8a';
-    }
-    resize();
     
-    let dibujando = false, lastX = 0, lastY = 0;
+    const newCanvas = canvas.cloneNode(true);
+    canvas.parentNode.replaceChild(newCanvas, canvas);
+    const canvasFinal = document.getElementById(id);
+    
+    const ctx = canvasFinal.getContext('2d');
+    
+    const rect = canvasFinal.getBoundingClientRect();
+    const w = rect.width || 300;
+    const h = rect.height || 120;
+    
+    canvasFinal.width = w * 2;
+    canvasFinal.height = h * 2;
+    canvasFinal.style.width = w + 'px';
+    canvasFinal.style.height = h + 'px';
+    
+    ctx.scale(2, 2);
+    ctx.lineWidth = 2.5;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#1e3a8a';
+    
+    let dibujando = false;
+    let lastX = 0, lastY = 0;
+    
     function getPos(e) {
-        const rect = canvas.getBoundingClientRect();
-        const cx = e.touches ? e.touches[0].clientX : e.clientX;
-        const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        return { x: cx - rect.left, y: cy - rect.top };
+        const rect = canvasFinal.getBoundingClientRect();
+        let clientX, clientY;
+        
+        if (e.touches && e.touches.length > 0) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else if (e.changedTouches && e.changedTouches.length > 0) {
+            clientX = e.changedTouches[0].clientX;
+            clientY = e.changedTouches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        
+        return { x: clientX - rect.left, y: clientY - rect.top };
     }
-    function start(e) { e.preventDefault(); dibujando = true; const p = getPos(e); lastX = p.x; lastY = p.y; }
+    
+    function start(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dibujando = true;
+        const p = getPos(e);
+        lastX = p.x;
+        lastY = p.y;
+        
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 1.2, 0, Math.PI * 2);
+        ctx.fillStyle = '#1e3a8a';
+        ctx.fill();
+    }
+    
     function move(e) {
         if (!dibujando) return;
         e.preventDefault();
+        e.stopPropagation();
         const p = getPos(e);
-        ctx.beginPath(); ctx.moveTo(lastX, lastY); ctx.lineTo(p.x, p.y); ctx.stroke();
-        lastX = p.x; lastY = p.y;
+        
+        const midX = (lastX + p.x) / 2;
+        const midY = (lastY + p.y) / 2;
+        
+        ctx.beginPath();
+        ctx.moveTo(lastX, lastY);
+        ctx.quadraticCurveTo(lastX, lastY, midX, midY);
+        ctx.stroke();
+        
+        lastX = p.x;
+        lastY = p.y;
     }
-    function end() { dibujando = false; }
     
-    canvas.addEventListener('mousedown', start);
-    canvas.addEventListener('mousemove', move);
-    canvas.addEventListener('mouseup', end);
-    canvas.addEventListener('mouseleave', end);
-    canvas.addEventListener('touchstart', start, { passive: false });
-    canvas.addEventListener('touchmove', move, { passive: false });
-    canvas.addEventListener('touchend', end);
+    function end(e) {
+        if (!dibujando) return;
+        e.preventDefault();
+        e.stopPropagation();
+        dibujando = false;
+        lastX = 0;
+        lastY = 0;
+    }
+    
+    canvasFinal.addEventListener('mousedown', start);
+    canvasFinal.addEventListener('mousemove', move);
+    canvasFinal.addEventListener('mouseup', end);
+    canvasFinal.addEventListener('mouseleave', end);
+    
+    canvasFinal.addEventListener('touchstart', start, { passive: false });
+    canvasFinal.addEventListener('touchmove', move, { passive: false });
+    canvasFinal.addEventListener('touchend', end, { passive: false });
+    canvasFinal.addEventListener('touchcancel', end, { passive: false });
 }
 
 function limpiarFirma(id) {
@@ -1965,16 +2772,6 @@ function calcularTiempos() {
         }
     }
 }
-
-// ============================================
-// INIT CANVAS
-// ============================================
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        inicializarCanvas('firmaTecnico');
-        inicializarCanvas('firmaSupervisor');
-    }, 500);
-});
 </script>
 
 </body>
