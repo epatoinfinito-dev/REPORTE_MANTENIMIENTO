@@ -21,7 +21,7 @@
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser } 
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } 
             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
         import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp } 
             from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -42,7 +42,7 @@
         window.firebaseAuth = auth;
         window.firebaseDB = db;
         window.firebaseFns = {
-            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, deleteUser,
+            createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail,
             collection, doc, setDoc, getDoc, getDocs, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp
         };
         
@@ -117,8 +117,17 @@
         .user-row { display: flex; align-items: center; justify-content: space-between; padding: 12px; border-bottom: 1px solid #e5e7eb; }
         .user-row:last-child { border-bottom: none; }
         
-        .hidden-view { display: none !important; }
+        .password-toggle-btn {
+            position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+            background: none; border: none; color: #6b7280; cursor: pointer;
+            font-size: 1.1rem; padding: 4px;
+        }
+        .password-toggle-btn:hover { color: #2563eb; }
         
+        .fuerza-bar-container { width: 100%; background: #e5e7eb; border-radius: 9999px; height: 6px; margin-top: 8px; overflow: hidden; }
+        .fuerza-bar { height: 6px; border-radius: 9999px; transition: all 0.3s; width: 0%; }
+        
+        .hidden-view { display: none !important; }
         .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 50; display: flex; align-items: center; justify-content: center; padding: 16px; }
     </style>
 </head>
@@ -136,43 +145,64 @@
             <p class="text-xs text-gray-400 mt-1">Diseñado por Eduardo Palacios</p>
         </div>
         
+        <!-- LOGIN -->
         <div id="formLogin">
             <h2 class="text-lg font-semibold mb-4">Iniciar Sesión</h2>
             <div class="space-y-3">
                 <div>
                     <label class="label-modern">Correo</label>
-                    <input type="email" id="loginEmail" class="input-modern" placeholder="tu@correo.com">
+                    <input type="email" id="loginEmail" class="input-modern" placeholder="tu@correo.com" autocomplete="email">
                 </div>
                 <div>
                     <label class="label-modern">Contraseña</label>
-                    <input type="password" id="loginPassword" class="input-modern" placeholder="••••••••">
+                    <div class="relative">
+                        <input type="password" id="loginPassword" class="input-modern" placeholder="••••••••" autocomplete="current-password" style="padding-right: 45px;">
+                        <button type="button" class="password-toggle-btn" onclick="togglePassword('loginPassword', this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <button class="btn-primary w-full" onclick="hacerLogin()" id="btnLogin">
                     <i class="fas fa-sign-in-alt mr-2"></i> Ingresar
                 </button>
                 <div id="loginError" class="text-red-500 text-sm text-center hidden-view"></div>
+                <div class="text-center mt-2">
+                    <button onclick="mostrarRecuperar()" class="text-sm text-gray-600 hover:text-blue-600 hover:underline" style="background:none;border:none;cursor:pointer;">
+                        ¿Olvidaste tu contraseña?
+                    </button>
+                </div>
                 <div class="text-center mt-4">
-                    <button onclick="mostrarRegistro()" class="text-blue-600 text-sm hover:underline">
+                    <button onclick="mostrarRegistro()" class="text-blue-600 text-sm hover:underline" style="background:none;border:none;cursor:pointer;">
                         ¿No tienes cuenta? Regístrate
                     </button>
                 </div>
             </div>
         </div>
         
+        <!-- REGISTRO -->
         <div id="formRegistro" class="hidden-view">
             <h2 class="text-lg font-semibold mb-4">Crear Cuenta</h2>
             <div class="space-y-3">
                 <div>
                     <label class="label-modern">Nombre completo</label>
-                    <input type="text" id="regNombre" class="input-modern">
+                    <input type="text" id="regNombre" class="input-modern" autocomplete="name">
                 </div>
                 <div>
                     <label class="label-modern">Correo</label>
-                    <input type="email" id="regEmail" class="input-modern">
+                    <input type="email" id="regEmail" class="input-modern" autocomplete="email">
                 </div>
                 <div>
                     <label class="label-modern">Contraseña (mín. 6 caracteres)</label>
-                    <input type="password" id="regPassword" class="input-modern">
+                    <div class="relative">
+                        <input type="password" id="regPassword" class="input-modern" autocomplete="new-password" style="padding-right: 45px;" oninput="evaluarFuerzaPassword(this.value)">
+                        <button type="button" class="password-toggle-btn" onclick="togglePassword('regPassword', this)">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="fuerza-bar-container">
+                        <div id="fuerzaBar" class="fuerza-bar"></div>
+                    </div>
+                    <div id="fuerzaTexto" class="text-xs text-gray-500 mt-1"></div>
                 </div>
                 <div>
                     <label class="label-modern">Código de invitación</label>
@@ -183,8 +213,31 @@
                 </button>
                 <div id="registroError" class="text-red-500 text-sm text-center hidden-view"></div>
                 <div class="text-center mt-4">
-                    <button onclick="mostrarLogin()" class="text-blue-600 text-sm hover:underline">
+                    <button onclick="mostrarLogin()" class="text-blue-600 text-sm hover:underline" style="background:none;border:none;cursor:pointer;">
                         Ya tengo cuenta
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- RECUPERAR -->
+        <div id="formRecuperar" class="hidden-view">
+            <h2 class="text-lg font-semibold mb-4">Recuperar Contraseña</h2>
+            <p class="text-sm text-gray-600 mb-4">
+                Te enviaremos un correo con un enlace para restablecer tu contraseña.
+            </p>
+            <div class="space-y-3">
+                <div>
+                    <label class="label-modern">Correo</label>
+                    <input type="email" id="recuperarEmail" class="input-modern" placeholder="tu@correo.com" autocomplete="email">
+                </div>
+                <button class="btn-primary w-full" onclick="enviarRecuperacion()" id="btnRecuperar">
+                    <i class="fas fa-paper-plane mr-2"></i> Enviar enlace
+                </button>
+                <div id="recuperarMsg" class="text-sm text-center hidden-view"></div>
+                <div class="text-center mt-4">
+                    <button onclick="mostrarLogin()" class="text-blue-600 text-sm hover:underline" style="background:none;border:none;cursor:pointer;">
+                        <i class="fas fa-arrow-left"></i> Volver al inicio de sesión
                     </button>
                 </div>
             </div>
@@ -208,28 +261,27 @@
                 <div class="text-xs text-gray-500" id="userEmail">-</div>
             </div>
             <span id="userRolBadge" class="rol-badge rol-tecnico">técnico</span>
-            <button onclick="cerrarSesion()" class="text-gray-500 hover:text-red-500 p-2" title="Cerrar sesión">
+            <button onclick="cerrarSesion()" class="text-gray-500 hover:text-red-500 p-2" title="Cerrar sesión" style="background:none;border:none;cursor:pointer;">
                 <i class="fas fa-sign-out-alt text-xl"></i>
             </button>
         </div>
     </div>
     
-    <!-- Tabs de navegación -->
     <div class="bg-white rounded-xl shadow-sm mb-6 overflow-x-auto">
         <div class="flex border-b">
-            <button onclick="cambiarTab('reportes')" id="tabReportes" class="px-6 py-3 whitespace-nowrap tab-active">
+            <button onclick="cambiarTab('reportes')" id="tabReportes" class="px-6 py-3 whitespace-nowrap tab-active" style="background:none;border:none;cursor:pointer;">
                 <i class="fas fa-list mr-2"></i> Reportes
             </button>
-            <button onclick="cambiarTab('estadisticas')" id="tabEstadisticas" class="px-6 py-3 whitespace-nowrap tab-inactive">
+            <button onclick="cambiarTab('estadisticas')" id="tabEstadisticas" class="px-6 py-3 whitespace-nowrap tab-inactive" style="background:none;border:none;cursor:pointer;">
                 <i class="fas fa-chart-bar mr-2"></i> Estadísticas
             </button>
-            <button onclick="cambiarTab('usuarios')" id="tabUsuarios" class="px-6 py-3 whitespace-nowrap tab-inactive hidden-view">
+            <button onclick="cambiarTab('usuarios')" id="tabUsuarios" class="px-6 py-3 whitespace-nowrap tab-inactive hidden-view" style="background:none;border:none;cursor:pointer;">
                 <i class="fas fa-users mr-2"></i> Usuarios
             </button>
         </div>
     </div>
     
-    <!-- TAB: REPORTES -->
+    <!-- TAB REPORTES -->
     <div id="contentReportes">
         <div class="mb-6 flex flex-wrap gap-3 items-center justify-between">
             <button onclick="abrirFormularioNuevo()" class="btn-primary">
@@ -303,7 +355,7 @@
         </div>
     </div>
     
-    <!-- TAB: ESTADÍSTICAS -->
+    <!-- TAB ESTADISTICAS -->
     <div id="contentEstadisticas" class="hidden-view">
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div class="stat-card">
@@ -340,7 +392,7 @@
         </div>
     </div>
     
-    <!-- TAB: USUARIOS (solo Admin) -->
+    <!-- TAB USUARIOS -->
     <div id="contentUsuarios" class="hidden-view">
         <div class="card">
             <div class="flex items-center justify-between mb-4">
@@ -362,7 +414,7 @@
             <h1 class="text-xl font-bold text-gray-800" id="tituloFormulario">📝 Nuevo Reporte</h1>
             <p class="text-sm text-gray-500">Instrumentos - M-INST</p>
         </div>
-        <button onclick="cancelarFormulario()" class="text-gray-500 hover:text-gray-700 p-2">
+        <button onclick="cancelarFormulario()" class="text-gray-500 hover:text-gray-700 p-2" style="background:none;border:none;cursor:pointer;">
             <i class="fas fa-arrow-left text-xl"></i> Volver
         </button>
     </div>
@@ -688,7 +740,6 @@ let fotosArray = [];
 let reporteEditando = null;
 let pdfActualBlob = null;
 let pdfActualNombre = "";
-let tabActual = 'reportes';
 
 // ============================================
 // INICIALIZACIÓN
@@ -706,7 +757,6 @@ window.addEventListener('firebaseReady', () => {
                 usuarioActual = { uid: user.uid, email: user.email, ...perfil };
                 mostrarDashboard();
             } else {
-                // Crear perfil si no existe
                 const nuevoPerfil = {
                     nombre: user.email.split('@')[0],
                     email: user.email,
@@ -835,6 +885,109 @@ async function cerrarSesion() {
 }
 
 // ============================================
+// VISOR DE CONTRASEÑA
+// ============================================
+function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+
+// ============================================
+// FUERZA DE CONTRASEÑA
+// ============================================
+function evaluarFuerzaPassword(password) {
+    const bar = document.getElementById('fuerzaBar');
+    const texto = document.getElementById('fuerzaTexto');
+    
+    if (!password) {
+        bar.style.width = '0%';
+        texto.textContent = '';
+        return;
+    }
+    
+    let fuerza = 0;
+    if (password.length >= 6) fuerza++;
+    if (password.length >= 10) fuerza++;
+    if (/[A-Z]/.test(password)) fuerza++;
+    if (/[0-9]/.test(password)) fuerza++;
+    if (/[^A-Za-z0-9]/.test(password)) fuerza++;
+    
+    const niveles = [
+        { w: '20%', color: '#dc2626', label: 'Muy débil' },
+        { w: '40%', color: '#f59e0b', label: 'Débil' },
+        { w: '60%', color: '#eab308', label: 'Regular' },
+        { w: '80%', color: '#84cc16', label: 'Buena' },
+        { w: '100%', color: '#10b981', label: 'Fuerte' }
+    ];
+    
+    const nivel = niveles[Math.min(fuerza, 4)];
+    bar.style.width = nivel.w;
+    bar.style.background = nivel.color;
+    texto.textContent = nivel.label;
+    texto.style.color = nivel.color;
+}
+
+// ============================================
+// RECUPERACIÓN DE CONTRASEÑA
+// ============================================
+function mostrarRecuperar() {
+    document.getElementById('formLogin').classList.add('hidden-view');
+    document.getElementById('formRegistro').classList.add('hidden-view');
+    document.getElementById('formRecuperar').classList.remove('hidden-view');
+    document.getElementById('recuperarMsg').classList.add('hidden-view');
+    document.getElementById('recuperarEmail').value = document.getElementById('loginEmail').value || '';
+}
+
+async function enviarRecuperacion() {
+    const email = document.getElementById('recuperarEmail').value.trim();
+    const btn = document.getElementById('btnRecuperar');
+    const msg = document.getElementById('recuperarMsg');
+    
+    if (!email) {
+        msg.textContent = '❌ Ingresa tu correo';
+        msg.className = 'text-sm text-center text-red-500 bg-red-50 p-3 rounded-lg';
+        msg.classList.remove('hidden-view');
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Enviando...';
+    msg.classList.add('hidden-view');
+    
+    try {
+        const { sendPasswordResetEmail } = window.firebaseFns;
+        await sendPasswordResetEmail(window.firebaseAuth, email);
+        
+        msg.textContent = '✅ Correo enviado. Revisa tu bandeja de entrada (y la carpeta de spam).';
+        msg.className = 'text-sm text-center text-green-600 bg-green-50 p-3 rounded-lg';
+        msg.classList.remove('hidden-view');
+        document.getElementById('recuperarEmail').value = '';
+    } catch (e) {
+        console.error(e);
+        let mensaje = 'Error al enviar el correo';
+        if (e.code === 'auth/user-not-found') mensaje = 'No existe una cuenta con ese correo';
+        if (e.code === 'auth/invalid-email') mensaje = 'El correo no es válido';
+        if (e.code === 'auth/too-many-requests') mensaje = 'Demasiados intentos. Intenta más tarde.';
+        msg.textContent = '❌ ' + mensaje;
+        msg.className = 'text-sm text-center text-red-500 bg-red-50 p-3 rounded-lg';
+        msg.classList.remove('hidden-view');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane mr-2"></i> Enviar enlace';
+    }
+}
+
+// ============================================
 // NAVEGACIÓN
 // ============================================
 function ocultarTodas() {
@@ -848,10 +1001,12 @@ function mostrarLogin() {
     document.getElementById('vistaLogin').classList.remove('hidden-view');
     document.getElementById('formLogin').classList.remove('hidden-view');
     document.getElementById('formRegistro').classList.add('hidden-view');
+    document.getElementById('formRecuperar').classList.add('hidden-view');
 }
 
 function mostrarRegistro() {
     document.getElementById('formLogin').classList.add('hidden-view');
+    document.getElementById('formRecuperar').classList.add('hidden-view');
     document.getElementById('formRegistro').classList.remove('hidden-view');
 }
 
@@ -865,7 +1020,6 @@ function mostrarDashboard() {
     badge.className = 'rol-badge rol-' + (usuarioActual.rol || 'tecnico');
     badge.textContent = usuarioActual.rol || 'técnico';
     
-    // Mostrar tab de usuarios solo para admin
     if (usuarioActual.rol === 'admin') {
         document.getElementById('tabUsuarios').classList.remove('hidden-view');
     } else {
@@ -877,7 +1031,6 @@ function mostrarDashboard() {
 }
 
 function cambiarTab(tab) {
-    tabActual = tab;
     ['reportes', 'estadisticas', 'usuarios'].forEach(t => {
         const content = document.getElementById('content' + t.charAt(0).toUpperCase() + t.slice(1));
         const tabBtn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
@@ -891,12 +1044,8 @@ function cambiarTab(tab) {
         }
     });
     
-    if (tab === 'estadisticas') {
-        calcularEstadisticas();
-    }
-    if (tab === 'usuarios') {
-        cargarUsuarios();
-    }
+    if (tab === 'estadisticas') calcularEstadisticas();
+    if (tab === 'usuarios') cargarUsuarios();
 }
 
 function cancelarFormulario() {
@@ -919,7 +1068,6 @@ async function cargarReportes() {
         cargarTecnicosEnFiltro();
     } catch (e) {
         console.error('Error:', e);
-        // Fallback sin orderBy
         try {
             const { collection, getDocs } = window.firebaseFns;
             const snap = await getDocs(collection(window.firebaseDB, 'reportes'));
@@ -1068,7 +1216,6 @@ function calcularEstadisticas() {
     document.getElementById('statAnalisis').textContent = analisis;
     document.getElementById('statMesActual').textContent = mesActual;
     
-    // Por planta
     const porPlanta = {};
     reportesCache.forEach(r => {
         const p = r.planta || 'Sin planta';
@@ -1089,7 +1236,6 @@ function calcularEstadisticas() {
             </div>
         `).join('') || '<p class="text-gray-400 text-sm">Sin datos</p>';
     
-    // Por técnico
     const porTecnico = {};
     reportesCache.forEach(r => {
         const t = r.autorNombre || 'Anónimo';
@@ -1111,7 +1257,6 @@ function calcularEstadisticas() {
             </div>
         `).join('') || '<p class="text-gray-400 text-sm">Sin datos</p>';
     
-    // Por TAG
     const porTag = {};
     reportesCache.forEach(r => {
         const t = r.tag || 'Sin TAG';
@@ -1129,7 +1274,7 @@ function calcularEstadisticas() {
 }
 
 // ============================================
-// GESTIÓN DE USUARIOS (ADMIN)
+// GESTIÓN DE USUARIOS
 // ============================================
 async function cargarUsuarios() {
     if (usuarioActual.rol !== 'admin') return;
@@ -1184,7 +1329,7 @@ async function cambiarRol(uid, nuevoRol) {
         return;
     }
     if (!confirm(`¿Cambiar el rol de este usuario a "${nuevoRol}"?`)) {
-        cargarUsuarios(); // Revertir
+        cargarUsuarios();
         return;
     }
     try {
@@ -1204,7 +1349,7 @@ async function eliminarUsuario(uid, nombre) {
         alert('No puedes eliminarte a ti mismo');
         return;
     }
-    if (!confirm(`⚠️ ¿Eliminar al usuario "${nombre}"? Esta acción borra su perfil. Los reportes que hizo quedan pero sin autor.`)) return;
+    if (!confirm(`⚠️ ¿Eliminar al usuario "${nombre}"?`)) return;
     
     try {
         const { doc, deleteDoc } = window.firebaseFns;
@@ -1303,7 +1448,6 @@ async function editarReporte(id) {
     const analisis = document.querySelector(`input[name="analisis"][value="${r.analisis || 'NO'}"]`);
     if (analisis) analisis.checked = true;
     
-    // Cargar fotos
     fotosArray = [];
     try {
         const { collection, getDocs, query, orderBy } = window.firebaseFns;
@@ -1333,7 +1477,7 @@ function limpiarFormularioCampos() {
 }
 
 // ============================================
-// GUARDAR REPORTE (SIN PDF EN FIRESTORE)
+// GUARDAR REPORTE
 // ============================================
 async function guardarYGenerarPDF() {
     if (!usuarioActual) {
@@ -1355,7 +1499,6 @@ async function guardarYGenerarPDF() {
     try {
         const { doc, setDoc, updateDoc, collection, getDocs, deleteDoc, serverTimestamp } = window.firebaseFns;
         
-        // Generar PDF local (solo para descargar)
         const pdfBlob = await generarPDFActual();
         const nombrePDF = `reporte_${tag}_${Date.now()}.pdf`;
         
@@ -1409,7 +1552,6 @@ async function guardarYGenerarPDF() {
             await setDoc(nuevoDoc, datos);
         }
         
-        // Guardar fotos en subcolección
         for (let i = 0; i < fotosArray.length; i++) {
             const pesoFotoKB = Math.round(fotosArray[i].length / 1024);
             if (pesoFotoKB > 300) {
@@ -1425,7 +1567,6 @@ async function guardarYGenerarPDF() {
             });
         }
         
-        // Descargar PDF localmente
         descargarBlob(pdfBlob, nombrePDF);
         
         alert('✅ Reporte guardado. El PDF se descargó en tu dispositivo.');
@@ -1442,7 +1583,7 @@ async function guardarYGenerarPDF() {
 }
 
 // ============================================
-// GENERAR PDF CON LOS DATOS ACTUALES
+// GENERAR PDF
 // ============================================
 async function generarPDFActual() {
     const datos = {
@@ -1474,9 +1615,6 @@ async function generarPDFActual() {
     return generarPDFDesdeDatos(datos, fotosArray);
 }
 
-// ============================================
-// GENERAR PDF DESDE DATOS (REUTILIZABLE)
-// ============================================
 async function generarPDFDesdeDatos(r, fotos) {
     const { jsPDF } = window.jspdf;
     
@@ -1551,15 +1689,6 @@ async function generarPDFDesdeDatos(r, fotos) {
     return doc.output('blob', { compress: true });
 }
 
-function blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-    });
-}
-
 function descargarBlob(blob, nombre) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1570,7 +1699,7 @@ function descargarBlob(blob, nombre) {
 }
 
 // ============================================
-// VER PDF (REGENERA AL VUELO)
+// VER PDF
 // ============================================
 async function verPDF(id) {
     try {
@@ -1650,7 +1779,7 @@ let recognition = null;
 function dictar(campoId, btn) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-        alert('❌ Tu navegador no soporta dictado por voz.\nUsa Chrome en Android o Safari en iOS.');
+        alert('❌ Tu navegador no soporta dictado por voz.');
         return;
     }
     if (recognition) { recognition.stop(); return; }
