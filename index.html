@@ -19,6 +19,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     
+    <!-- Visor de PDFs nativo -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } 
@@ -301,8 +307,8 @@
             </button>
         </div>
     </div>
-
-        <!-- TAB REPORTES -->
+    
+    <!-- TAB REPORTES -->
     <div id="contentReportes">
         <div class="mb-4 flex flex-wrap gap-3 items-center justify-between">
             <button onclick="abrirFormularioNuevo()" class="btn-primary">
@@ -315,7 +321,6 @@
             </div>
         </div>
         
-        <!-- Contenedor del buscador (Oculto por defecto) -->
         <div id="panelBuscador" class="card hidden-view fade-in">
             <div class="flex justify-between items-center mb-3">
                 <h3 class="font-bold text-gray-700"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
@@ -374,7 +379,6 @@
             </div>
         </div>
         
-        <!-- Lista de reportes -->
         <div class="flex justify-between items-center mb-2">
             <div class="text-sm text-gray-600">
                 <span id="contadorReportes">0</span> reportes encontrados
@@ -383,7 +387,6 @@
         
         <div id="listaReportes" class="space-y-3"></div>
         
-        <!-- Botón para ver todos -->
         <div id="wrapperVerTodos" class="text-center mt-4 hidden-view">
             <button onclick="toggleMostrarTodos()" class="btn-secondary" style="padding: 10px 20px;">
                 <i class="fas fa-chevron-down mr-2"></i> Ver todos los reportes
@@ -661,7 +664,6 @@
             </div>
         </div>
 
-        <!-- EVIDENCIAS FOTOGRÁFICAS CON CÁMARA Y GALERÍA -->
         <div class="card">
             <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-camera text-blue-500 mr-2"></i>Evidencias Fotográficas</h2>
             
@@ -688,7 +690,6 @@
         </div>
 
         <div class="text-center mt-8 mb-12 flex flex-wrap justify-center gap-3">
-            <!-- Botón único de Guardar -->
             <button type="button" onclick="guardarYGenerarPDF()" class="btn-primary text-lg py-4 px-8 rounded-full shadow-lg" id="btnGuardar">
                 <i class="fas fa-save mr-2"></i> GUARDAR REPORTE
             </button>
@@ -727,10 +728,10 @@
     </div>
 </div>
 
-<!-- MODAL VISOR PDF -->
+<!-- MODAL VISOR PDF (ACTUALIZADO CON CONTENEDOR PARA PDF.JS) -->
 <div id="modalPDF" class="hidden-view modal-overlay">
-    <div class="bg-white rounded-lg w-full max-w-4xl" style="height: 90vh;">
-        <div class="flex items-center justify-between p-3 border-b">
+    <div class="bg-white rounded-lg w-full max-w-4xl flex flex-col" style="height: 90vh;">
+        <div class="flex items-center justify-between p-3 border-b shrink-0">
             <h3 class="font-bold text-gray-800">📄 <span id="pdfTitulo">Reporte</span></h3>
             <div class="flex gap-2 flex-wrap">
                 <button onclick="enviarPDFPorCorreo()" class="btn-primary" style="background: #0ea5e9; border-color: #0ea5e9;">
@@ -744,7 +745,11 @@
                 </button>
             </div>
         </div>
-        <iframe id="pdfViewer" style="width: 100%; height: calc(90vh - 60px);" frameborder="0"></iframe>
+        
+        <!-- Contenedor donde se dibujarán las páginas del PDF -->
+        <div id="pdfViewerContainer" class="flex-1 overflow-y-auto bg-gray-200 p-4 flex flex-col items-center gap-4" style="min-height: 0;">
+            <!-- Las páginas se cargarán aquí dinámicamente -->
+        </div>
     </div>
 </div>
 
@@ -1073,7 +1078,7 @@
 // CONSTANTES Y ESTADO GLOBAL
 // ============================================
 const CODIGO_INVITACION = "MANT-2026";
-let correoDestinoDefault = "epalacios@monomeros.com.co"; // ⚠️ CAMBIA ESTO POR TU CORREO REAL
+let correoDestinoDefault = "mantenimiento@tuepresa.com"; // ⚠️ CAMBIA ESTO POR TU CORREO REAL
 let usuarioActual = null;
 let reportesCache = [];
 let usuariosCache = [];
@@ -1088,6 +1093,8 @@ let tipoItemActual = null;
 let fotoItemActual = null;
 let itemMovimientoActual = null;
 let tipoMovimientoActual = null;
+let mostrarTodosLosReportes = false;
+let reportesFiltradosCache = [];
 
 // ============================================
 // INICIALIZACIÓN FIREBASE
@@ -1433,15 +1440,6 @@ function cargarTecnicosEnFiltro() {
         tecnicos.map(t => `<option value="${t}">${t}</option>`).join('');
 }
 
-// ============================================
-// VARIABLES GLOBALES PARA EL DASHBOARD
-// ============================================
-let mostrarTodosLosReportes = false;
-let reportesFiltradosCache = [];
-
-// ============================================
-// FUNCIONES DE INTERFAZ (BÚSQUEDA Y LISTA)
-// ============================================
 function toggleBuscador() {
     const panel = document.getElementById('panelBuscador');
     panel.classList.toggle('hidden-view');
@@ -1449,7 +1447,7 @@ function toggleBuscador() {
 
 function toggleMostrarTodos() {
     mostrarTodosLosReportes = !mostrarTodosLosReportes;
-    aplicarFiltros(); // Volver a renderizar con el nuevo estado
+    aplicarFiltros();
 }
 
 function aplicarFiltros() {
@@ -1493,29 +1491,19 @@ function aplicarFiltros() {
         });
     }
     
-    // Guardamos los filtrados en caché global
     reportesFiltradosCache = filtrados;
-    
-    // Actualizamos el contador real
     document.getElementById('contadorReportes').textContent = filtrados.length;
     
-    // Lógica de "Mostrar solo 5" vs "Mostrar todos"
     const wrapperVerTodos = document.getElementById('wrapperVerTodos');
     let reportesAMostrar = filtrados;
     
-    // Si hay más de 5 y NO está activado el "ver todos", cortamos la lista
     if (filtrados.length > 5 && !mostrarTodosLosReportes) {
         reportesAMostrar = filtrados.slice(0, 5);
         wrapperVerTodos.classList.remove('hidden-view');
-        
-        // Actualizamos el texto del botón
         const btnVerTodos = wrapperVerTodos.querySelector('button');
         btnVerTodos.innerHTML = `<i class="fas fa-chevron-down mr-2"></i> Ver los ${filtrados.length - 5} reportes restantes`;
     } else {
         wrapperVerTodos.classList.add('hidden-view');
-        
-        // Si estamos mostrando todos, el botón de "ver todos" desaparece, pero
-        // podemos ofrecer un botón de "Mostrar menos" si hay más de 5
         if (filtrados.length > 5 && mostrarTodosLosReportes) {
             wrapperVerTodos.classList.remove('hidden-view');
             const btnVerTodos = wrapperVerTodos.querySelector('button');
@@ -1945,16 +1933,13 @@ async function guardarYGenerarPDF() {
         }
         
         // --- GUARDADO EXITOSO ---
-        // 1. Guardamos el PDF temporalmente en variables globales
         pdfActualBlob = pdfBlob;
         pdfActualNombre = nombrePDF;
         document.getElementById('pdfTitulo').textContent = `${tag} - ${planta}`;
         
-        // 2. Volvemos al dashboard
         reporteEditando = null;
         mostrarDashboard();
         
-        // 3. Mostramos el pop-up de opciones
         document.getElementById('modalOpcionesGuardado').classList.remove('hidden-view');
         
     } catch (e) {
@@ -1966,9 +1951,7 @@ async function guardarYGenerarPDF() {
     }
 }
 
-// Función que maneja la elección del pop-up
 function accionGuardado(accion) {
-    // Ocultar el modal
     document.getElementById('modalOpcionesGuardado').classList.add('hidden-view');
     
     if (accion === 'descargar') {
@@ -1976,7 +1959,6 @@ function accionGuardado(accion) {
     } else if (accion === 'correo') {
         enviarPDFPorCorreo();
     }
-    // Si es 'cancelar', no hace nada (el PDF ya está guardado en la base de datos)
 }
 
 async function generarPDFActual() {
@@ -2092,9 +2074,6 @@ function descargarBlob(blob, nombre) {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-// ============================================
-// ENVIAR PDF POR CORREO
-// ============================================
 async function enviarPDFPorCorreo() {
     if (!pdfActualBlob) {
         alert('Primero debes generar o ver un PDF para poder enviarlo.');
@@ -2103,35 +2082,36 @@ async function enviarPDFPorCorreo() {
 
     try {
         const nombreArchivo = pdfActualNombre || `reporte_${Date.now()}.pdf`;
-        const archivo = new File([pdfActualBlob], nombreArchivo, { type: 'application/pdf' });
+        
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(pdfActualBlob);
+        a.download = nombreArchivo;
+        a.click();
 
-        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
-            await navigator.share({
-                files: [archivo],
-                title: 'Reporte de Mantenimiento',
-                text: 'Adjunto reporte de mantenimiento generado desde el sistema.'
-            });
-        } else {
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(pdfActualBlob);
-            a.download = nombreArchivo;
-            a.click();
-
-            const asunto = encodeURIComponent(`Reporte de Mantenimiento - ${document.getElementById('pdfTitulo').textContent}`);
-            const cuerpo = encodeURIComponent(`Hola,\n\nAdjunto encontrarás el reporte de mantenimiento generado.\n\nPor favor, adjunta el archivo "${nombreArchivo}" que acaba de descargarse.\n\nSaludos.`);
-            
-            window.location.href = `mailto:${correoDestinoDefault}?subject=${asunto}&body=${cuerpo}`;
-            
-            alert(`✅ El PDF se ha descargado en tu dispositivo.\n\nSe abrirá tu gestor de correo. Por favor, arrastra el archivo "${nombreArchivo}" como adjunto al correo.`);
+        const asunto = encodeURIComponent(`Reporte de Mantenimiento - ${document.getElementById('pdfTitulo').textContent}`);
+        const cuerpo = encodeURIComponent(`Hola,\n\nAdjunto encontrarás el reporte de mantenimiento generado.\n\nPor favor, adjunta el archivo "${nombreArchivo}" que acaba de descargarse.\n\nSaludos.`);
+        
+        let mailtoLink = `mailto:${correoDestinoDefault}?subject=${asunto}&body=${cuerpo}`;
+        
+        if (/Android/i.test(navigator.userAgent)) {
+            mailtoLink = `mailto:${correoDestinoDefault}?subject=${asunto}&body=${cuerpo}`; 
         }
+
+        window.location.href = mailtoLink;
+        
+        setTimeout(() => {
+            alert(`✅ El PDF se ha descargado en tu dispositivo.\n\nSe ha abierto tu aplicación de correo con el destinatario configurado (${correoDestinoDefault}).\n\n⚠️ IMPORTANTE: Por seguridad, los navegadores no permiten adjuntar archivos automáticamente. Por favor, busca el archivo "${nombreArchivo}" en tus descargas y adjúntalo al correo antes de enviarlo.`);
+        }, 500);
+
     } catch (error) {
         console.error('Error al enviar correo:', error);
-        if (error.name !== 'AbortError') {
-            alert('Hubo un problema al intentar enviar el correo.');
-        }
+        alert('Hubo un problema al intentar abrir el correo.');
     }
 }
 
+// ============================================
+// VISOR DE PDF (PDF.JS)
+// ============================================
 async function verPDF(id) {
     try {
         const { doc, getDoc, collection, getDocs, query, orderBy } = window.firebaseFns;
@@ -2154,9 +2134,39 @@ async function verPDF(id) {
         pdfActualNombre = r.pdfNombre || `reporte_${r.tag}.pdf`;
         document.getElementById('pdfTitulo').textContent = `${r.tag} - ${r.planta}`;
         
-        const url = URL.createObjectURL(pdfBlob);
-        document.getElementById('pdfViewer').src = url;
         document.getElementById('modalPDF').classList.remove('hidden-view');
+        const container = document.getElementById('pdfViewerContainer');
+        container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-blue-600 text-3xl"></i><p class="text-gray-600 mt-2">Cargando vista previa...</p></div>';
+        
+        const arrayBuffer = await pdfBlob.arrayBuffer();
+        
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        
+        container.innerHTML = ''; 
+        
+        for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            
+            const viewport = page.getViewport({ scale: 1.5 });
+            
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            canvas.className = 'shadow-lg bg-white max-w-full h-auto mb-4 border border-gray-300';
+            
+            container.appendChild(canvas);
+            
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            
+            await page.render(renderContext).promise;
+        }
+        
     } catch (e) {
         console.error(e);
         alert('Error al generar PDF: ' + e.message);
@@ -2165,19 +2175,12 @@ async function verPDF(id) {
 
 function cerrarModalPDF() {
     document.getElementById('modalPDF').classList.add('hidden-view');
-    document.getElementById('pdfViewer').src = '';
+    document.getElementById('pdfViewerContainer').innerHTML = '';
 }
 
 function descargarPDFActual() {
     if (pdfActualBlob) {
         descargarBlob(pdfActualBlob, pdfActualNombre);
-    } else {
-        const src = document.getElementById('pdfViewer').src;
-        if (!src) return;
-        const a = document.createElement('a');
-        a.href = src;
-        a.download = pdfActualNombre;
-        a.click();
     }
 }
 
