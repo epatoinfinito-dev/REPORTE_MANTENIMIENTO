@@ -646,14 +646,12 @@
             <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-camera text-blue-500 mr-2"></i>Evidencias Fotográficas</h2>
             
             <div class="grid grid-cols-2 gap-3 mb-4">
-                <!-- Botón de Cámara -->
                 <button type="button" onclick="document.getElementById('photoCamera').click()" class="border-2 border-dashed border-blue-300 rounded-lg p-4 text-center bg-blue-50 hover:bg-blue-100 transition cursor-pointer" style="background:none;">
                     <i class="fas fa-camera text-3xl text-blue-500 mb-2"></i>
                     <p class="text-blue-700 font-semibold text-sm">Tomar Foto</p>
                     <p class="text-xs text-gray-500">Abrir cámara</p>
                 </button>
                 
-                <!-- Botón de Galería -->
                 <button type="button" onclick="document.getElementById('photoGallery').click()" class="border-2 border-dashed border-green-300 rounded-lg p-4 text-center bg-green-50 hover:bg-green-100 transition cursor-pointer" style="background:none;">
                     <i class="fas fa-images text-3xl text-green-500 mb-2"></i>
                     <p class="text-green-700 font-semibold text-sm">Galería</p>
@@ -661,7 +659,6 @@
                 </button>
             </div>
             
-            <!-- Inputs ocultos -->
             <input type="file" id="photoCamera" accept="image/*" capture="environment" multiple class="hidden">
             <input type="file" id="photoGallery" accept="image/*" multiple class="hidden">
             
@@ -671,9 +668,11 @@
         </div>
 
         <div class="text-center mt-8 mb-12 flex flex-wrap justify-center gap-3">
+            <!-- Botón único de Guardar -->
             <button type="button" onclick="guardarYGenerarPDF()" class="btn-primary text-lg py-4 px-8 rounded-full shadow-lg" id="btnGuardar">
                 <i class="fas fa-save mr-2"></i> GUARDAR REPORTE
             </button>
+            
             <button type="button" onclick="cancelarFormulario()" class="btn-secondary text-lg py-4 px-8 rounded-full">
                 <i class="fas fa-times mr-2"></i> Cancelar
             </button>
@@ -685,14 +684,44 @@
 <!-- MODALES Y VISTAS                             -->
 <!-- ============================================ -->
 
+<!-- MODAL OPCIONES DE GUARDADO -->
+<div id="modalOpcionesGuardado" class="hidden-view modal-overlay" style="z-index: 60;">
+    <div class="bg-white rounded-lg w-full max-w-sm p-6 text-center fade-in">
+        <div class="text-3xl text-green-500 mb-3"><i class="fas fa-check-circle"></i></div>
+        <h3 class="text-lg font-bold text-gray-800 mb-2">¡Reporte Guardado!</h3>
+        <p class="text-sm text-gray-500 mb-6">¿Qué deseas hacer con el PDF generado?</p>
+        
+        <div class="flex flex-col gap-3">
+            <button onclick="accionGuardado('descargar')" class="btn-primary w-full py-3" style="background: #10b981; border-color: #10b981;">
+                <i class="fas fa-download mr-2"></i> Descargar PDF
+            </button>
+            
+            <button onclick="accionGuardado('correo')" class="btn-primary w-full py-3" style="background: #0ea5e9; border-color: #0ea5e9;">
+                <i class="fas fa-envelope mr-2"></i> Enviar por Correo
+            </button>
+            
+            <button onclick="accionGuardado('cancelar')" class="btn-secondary w-full py-3" style="background: #f3f4f6; color: #374151; border: 1px solid #d1d5db;">
+                <i class="fas fa-times mr-2"></i> Cancelar
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- MODAL VISOR PDF -->
 <div id="modalPDF" class="hidden-view modal-overlay">
     <div class="bg-white rounded-lg w-full max-w-4xl" style="height: 90vh;">
         <div class="flex items-center justify-between p-3 border-b">
             <h3 class="font-bold text-gray-800">📄 <span id="pdfTitulo">Reporte</span></h3>
-            <div class="flex gap-2">
-                <button onclick="descargarPDFActual()" class="btn-success"><i class="fas fa-download mr-1"></i> Descargar</button>
-                <button onclick="cerrarModalPDF()" class="btn-secondary" style="padding: 8px 12px;"><i class="fas fa-times"></i></button>
+            <div class="flex gap-2 flex-wrap">
+                <button onclick="enviarPDFPorCorreo()" class="btn-primary" style="background: #0ea5e9; border-color: #0ea5e9;">
+                    <i class="fas fa-envelope mr-1"></i> Enviar por Correo
+                </button>
+                <button onclick="descargarPDFActual()" class="btn-success">
+                    <i class="fas fa-download mr-1"></i> Descargar
+                </button>
+                <button onclick="cerrarModalPDF()" class="btn-secondary" style="padding: 8px 12px;">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
         </div>
         <iframe id="pdfViewer" style="width: 100%; height: calc(90vh - 60px);" frameborder="0"></iframe>
@@ -893,26 +922,21 @@
     <!-- CABECERA CON LOGO -->
     <table class="pdf-table" style="border-collapse: collapse; width: 100%;">
         <tr>
-            
-             <!-- Logo -->
             <td rowspan="2" style="width: 28%; text-align: center; vertical-align: middle; padding: 10px;">
                 <img src="logo.jpg" style="max-width: 90%; max-height: 65px; object-fit: contain; display: block; margin: 0 auto;" crossorigin="anonymous">
             </td>
             
-            <!-- Título -->
             <td style="width: 44%; text-align: center; vertical-align: middle; padding: 8px 4px; border-left: 1px solid black; border-right: 1px solid black;">
                 <div style="font-weight: bold; font-size: 12px; line-height: 1.4;">REPORTE DE EJECUCIÓN</div>
                 <div style="font-weight: bold; font-size: 12px; line-height: 1.4;">GERENCIA DE MANTENIMIENTO</div>
             </td>
             
-            <!-- Aviso y Orden -->
             <td style="width: 28%; padding: 5px; vertical-align: top;">
                 <div style="font-size: 10px; margin-bottom: 6px;"><span style="font-weight: bold;">AVISO:</span> <span id="pdf_aviso"></span></div>
                 <div style="font-size: 10px; margin-top: 4px;"><span style="font-weight: bold;">ORDEN DE TRABAJO:</span><br><span id="pdf_orden"></span></div>
             </td>
         </tr>
         <tr>
-            <!-- Especialidad -->
             <td style="padding: 5px; vertical-align: top; border-left: 1px solid black; border-right: 1px solid black;">
                 <div style="font-size: 10px;"><span style="font-weight: bold;">ESPECIALIDAD:</span> M-INST</div>
                 <div style="font-size: 10px; margin-top: 2px;"><span style="font-weight: bold;">GRUPO:</span> Grupo 1</div>
@@ -923,7 +947,7 @@
     <!-- FILA 3: PLANTA, TAG, DESCRIPCIÓN -->
     <table class="pdf-table" style="border-collapse: collapse; width: 100%; border-top: none;">
         <tr>
-            <td style="width: 28%; border-top: none;"></td> <!-- Espacio vacío debajo del logo -->
+            <td style="width: 28%; border-top: none;"></td>
             <td style="width: 72%; padding: 5px; vertical-align: top; border-left: 1px solid black;">
                 <div style="font-size: 10px; display: flex; justify-content: space-between;">
                     <span><span style="font-weight: bold;">PLANTA:</span> <span id="pdf_planta"></span></span>
@@ -1029,6 +1053,7 @@
 // CONSTANTES Y ESTADO GLOBAL
 // ============================================
 const CODIGO_INVITACION = "MANT-2026";
+let correoDestinoDefault = "epalacios@monomeros.com.co"; // ⚠️ CAMBIA ESTO POR TU CORREO REAL
 let usuarioActual = null;
 let reportesCache = [];
 let usuariosCache = [];
@@ -1851,11 +1876,18 @@ async function guardarYGenerarPDF() {
             });
         }
         
-        descargarBlob(pdfBlob, nombrePDF);
+        // --- GUARDADO EXITOSO ---
+        // 1. Guardamos el PDF temporalmente en variables globales
+        pdfActualBlob = pdfBlob;
+        pdfActualNombre = nombrePDF;
+        document.getElementById('pdfTitulo').textContent = `${tag} - ${planta}`;
         
-        alert('✅ Reporte guardado. El PDF se descargó en tu dispositivo.');
+        // 2. Volvemos al dashboard
         reporteEditando = null;
         mostrarDashboard();
+        
+        // 3. Mostramos el pop-up de opciones
+        document.getElementById('modalOpcionesGuardado').classList.remove('hidden-view');
         
     } catch (e) {
         console.error('Error guardando:', e);
@@ -1864,6 +1896,19 @@ async function guardarYGenerarPDF() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save mr-2"></i> GUARDAR REPORTE';
     }
+}
+
+// Función que maneja la elección del pop-up
+function accionGuardado(accion) {
+    // Ocultar el modal
+    document.getElementById('modalOpcionesGuardado').classList.add('hidden-view');
+    
+    if (accion === 'descargar') {
+        descargarBlob(pdfActualBlob, pdfActualNombre);
+    } else if (accion === 'correo') {
+        enviarPDFPorCorreo();
+    }
+    // Si es 'cancelar', no hace nada (el PDF ya está guardado en la base de datos)
 }
 
 async function generarPDFActual() {
@@ -1977,6 +2022,46 @@ function descargarBlob(blob, nombre) {
     a.download = nombre;
     a.click();
     setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+// ============================================
+// ENVIAR PDF POR CORREO
+// ============================================
+async function enviarPDFPorCorreo() {
+    if (!pdfActualBlob) {
+        alert('Primero debes generar o ver un PDF para poder enviarlo.');
+        return;
+    }
+
+    try {
+        const nombreArchivo = pdfActualNombre || `reporte_${Date.now()}.pdf`;
+        const archivo = new File([pdfActualBlob], nombreArchivo, { type: 'application/pdf' });
+
+        if (navigator.canShare && navigator.canShare({ files: [archivo] })) {
+            await navigator.share({
+                files: [archivo],
+                title: 'Reporte de Mantenimiento',
+                text: 'Adjunto reporte de mantenimiento generado desde el sistema.'
+            });
+        } else {
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(pdfActualBlob);
+            a.download = nombreArchivo;
+            a.click();
+
+            const asunto = encodeURIComponent(`Reporte de Mantenimiento - ${document.getElementById('pdfTitulo').textContent}`);
+            const cuerpo = encodeURIComponent(`Hola,\n\nAdjunto encontrarás el reporte de mantenimiento generado.\n\nPor favor, adjunta el archivo "${nombreArchivo}" que acaba de descargarse.\n\nSaludos.`);
+            
+            window.location.href = `mailto:${correoDestinoDefault}?subject=${asunto}&body=${cuerpo}`;
+            
+            alert(`✅ El PDF se ha descargado en tu dispositivo.\n\nSe abrirá tu gestor de correo. Por favor, arrastra el archivo "${nombreArchivo}" como adjunto al correo.`);
+        }
+    } catch (error) {
+        console.error('Error al enviar correo:', error);
+        if (error.name !== 'AbortError') {
+            alert('Hubo un problema al intentar enviar el correo.');
+        }
+    }
 }
 
 async function verPDF(id) {
