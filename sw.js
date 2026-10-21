@@ -1,8 +1,13 @@
-const CACHE_NAME = 'reportes-instrumentos-v24';
+const CACHE_NAME = 'reportes-instrumentos-v25';
 const APP_SHELL = ['./', './index.html', './manifest.json', './logo.jpg'];
 
+// Servicios de datos en vivo: nunca se interceptan ni se guardan.
+const SOLO_RED = /firestore\.googleapis\.com|identitytoolkit\.googleapis\.com|securetoken\.googleapis\.com|firebaseinstallations|firebaseio\.com|\.firebaseapp\.com/;
+
+// Librerías y recursos estáticos con URL versionada: caché primero.
+const ESTATICOS = /www\.gstatic\.com\/firebasejs|cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net|unpkg\.com|cdn\.tailwindcss\.com|fonts\.googleapis\.com|fonts\.gstatic\.com/;
+
 self.addEventListener('install', event => {
-  // Guarda cada archivo por separado: si falta uno (como logo.jpg), no falla todo.
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
       Promise.allSettled(APP_SHELL.map(url => cache.add(url)))
@@ -22,14 +27,12 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const req = event.request;
   if (req.method !== 'GET') return;
+  const url = req.url;
 
-  const url = new URL(req.url);
+  // Datos en vivo: dejar que el navegador y Firestore manejen la petición.
+  if (SOLO_RED.test(url)) return;
 
-  // Firebase y Google: siempre red (datos en vivo, nunca caché).
-  if (/firebase|googleapis|gstatic/.test(url.hostname)) return;
-
-  // Páginas: red primero, y si no hay conexión, la copia guardada.
-  // Así una versión nueva de index.html se ve de inmediato.
+  // La página principal: red primero, copia guardada si no hay conexión.
   if (req.mode === 'navigate' || req.destination === 'document') {
     event.respondWith(
       fetch(req)
@@ -43,18 +46,18 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Resto (logo, manifest, librerías CDN): caché primero, red si no está.
-  event.respondWith(
-    caches.match(req).then(cached => cached || fetch(req).then(res => {
-      const esPropio = url.origin === self.location.origin;
-      const esCDN = /cdn|cloudflare|jsdelivr|unpkg|tailwindcss/.test(url.hostname);
-      if (res.ok && (esPropio || esCDN)) {
-        const copia = res.clone();
-        caches.open(CACHE_NAME).then(c => c.put(req, copia));
-      }
-      return res;
-    }))
-  );
+  // Librerías, fuentes, íconos y archivos propios: caché primero.
+  if (ESTATICOS.test(url) || new URL(url).origin === self.location.origin) {
+    event.respondWith(
+      caches.match(req).then(cached => cached || fetch(req).then(res => {
+        if (res.ok) {
+          const copia = res.clone();
+          caches.open(CACHE_NAME).then(c => c.put(req, copia));
+        }
+        return res;
+      }))
+    );
+  }
 });
 
 self.addEventListener('message', event => {
