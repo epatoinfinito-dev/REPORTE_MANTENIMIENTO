@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reportes-instrumentos-v22';
+const CACHE_NAME = 'reportes-instrumentos-v23';
 const urlsToCache = ['./', './index.html', './manifest.json'];
 
 self.addEventListener('install', event => {
