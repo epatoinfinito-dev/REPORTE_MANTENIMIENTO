@@ -310,10 +310,15 @@
     
     <!-- TAB REPORTES -->
     <div id="contentReportes">
-        <div class="mb-4 flex flex-wrap gap-3 items-center justify-between">
-            <button onclick="abrirFormularioNuevo()" class="btn-primary">
-                <i class="fas fa-plus mr-2"></i> Nuevo Reporte
-            </button>
+                <div class="mb-4 flex flex-wrap gap-3 items-center justify-between">
+            <div class="flex gap-2">
+                <button onclick="abrirFormularioNuevo()" class="btn-primary">
+                    <i class="fas fa-plus mr-2"></i> Nuevo Reporte
+                </button>
+                <button onclick="abrirFormularioCalibracion()" class="btn-primary" style="background: #0ea5e9; border-color: #0ea5e9;">
+                    <i class="fas fa-tachometer-alt mr-2"></i> Nuevo Certificado de Calibración
+                </button>
+            </div>
             <div class="flex gap-2">
                 <button onclick="toggleBuscador()" class="btn-secondary text-sm" style="padding: 8px 16px;">
                     <i class="fas fa-filter mr-1"></i> Búsqueda Avanzada
@@ -700,7 +705,118 @@
         </div>
     </form>
 </div>
+<!-- ============================================ -->
+<!-- VISTA FORMULARIO DE CALIBRACIÓN              -->
+<!-- ============================================ -->
+<div id="vistaCalibracion" class="hidden-view p-4 md:p-8 max-w-4xl mx-auto">
+    
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800" id="tituloFormularioCalibracion">📝 Nuevo Certificado de Calibración</h1>
+            <p class="text-sm text-gray-500">Instrumentos - M-INST</p>
+        </div>
+        <button onclick="cancelarCalibracion()" class="text-gray-500 hover:text-gray-700 p-2" style="background:none;border:none;cursor:pointer;">
+            <i class="fas fa-arrow-left text-xl"></i> Volver
+        </button>
+    </div>
+    
+    <form id="calibrationForm" class="space-y-6">
+        <div class="card">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-info-circle text-blue-500 mr-2"></i>Datos del Instrumento</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="label-modern">TAG *</label>
+                    <input type="text" id="cal_tag" class="input-modern" placeholder="Ej: PDIT0X07">
+                </div>
+                <div>
+                    <label class="label-modern">Gama *</label>
+                    <input type="text" id="cal_gama" class="input-modern" placeholder="Ej: 0 - 1000">
+                </div>
+                <div>
+                    <label class="label-modern">Unidad de Gama *</label>
+                    <input type="text" id="cal_unidad_gama" class="input-modern" placeholder="Ej: INH2O, PSI, Bar">
+                </div>
+                <div>
+                    <label class="label-modern">Fecha de Calibración *</label>
+                    <input type="date" id="cal_fecha" class="input-modern">
+                </div>
+                <div>
+                    <label class="label-modern">Próxima Calibración</label>
+                    <input type="text" id="cal_proxima" class="input-modern" placeholder="Ej: MTTO">
+                </div>
+                <div>
+                    <label class="label-modern">Patrón Usado</label>
+                    <input type="text" id="cal_patron" class="input-modern" placeholder="Ej: PG08/MM08">
+                </div>
+                <div>
+                    <label class="label-modern">Error Máximo *</label>
+                    <input type="text" id="cal_error_max" class="input-modern" placeholder="Ej: 0.5" value="0.5">
+                </div>
+            </div>
+        </div>
 
+        <div class="card">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-table text-blue-500 mr-2"></i>Tabla de Calibración (5 puntos)</h2>
+            <p class="text-xs text-gray-500 mb-4">El sistema calculará el error automáticamente. Asegúrate de usar el punto decimal (.)</p>
+            
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-center border-collapse">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="p-2 border">Valor Generado</th>
+                            <th class="p-2 border">Valor Esperado (mA)</th>
+                            <th class="p-2 border">Valor Obtenido (mA)</th>
+                            <th class="p-2 border">Valor Obtenido (Unidad)</th>
+                            <th class="p-2 border">Error (Unidad)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><input type="number" id="cal_gen_1" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_esp_1" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_obt_ma_1" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_obt_uni_1" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="text" id="cal_err_1" class="input-modern text-center bg-gray-50" readonly></td></tr>
+                        <tr><td><input type="number" id="cal_gen_2" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_esp_2" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_obt_ma_2" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_obt_uni_2" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="text" id="cal_err_2" class="input-modern text-center bg-gray-50" readonly></td></tr>
+                        <tr><td><input type="number" id="cal_gen_3" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_esp_3" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_obt_ma_3" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_obt_uni_3" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="text" id="cal_err_3" class="input-modern text-center bg-gray-50" readonly></td></tr>
+                        <tr><td><input type="number" id="cal_gen_4" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_esp_4" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_obt_ma_4" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_obt_uni_4" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="text" id="cal_err_4" class="input-modern text-center bg-gray-50" readonly></td></tr>
+                        <tr><td><input type="number" id="cal_gen_5" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_esp_5" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_obt_ma_5" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="number" id="cal_obt_uni_5" class="input-modern text-center" oninput="calcularErroresCalibracion()"></td><td><input type="text" id="cal_err_5" class="input-modern text-center bg-gray-50" readonly></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-check-circle text-blue-500 mr-2"></i>Cierre y Firmas</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label-modern">Observaciones</label>
+                    <textarea id="cal_observaciones" class="input-modern" rows="2"></textarea>
+                </div>
+                <div class="flex items-center gap-2 mt-6">
+                    <input type="checkbox" id="cal_conforme" class="w-5 h-5 text-blue-600 rounded">
+                    <label for="cal_conforme" class="font-bold text-gray-700">EQUIPO CONFORME</label>
+                </div>
+                <div>
+                    <label class="label-modern">Firma del Técnico</label>
+                    <canvas id="cal_firmaTecnico" class="firma-canvas"></canvas>
+                    <button type="button" class="btn-limpiar-firma" onclick="limpiarFirma('cal_firmaTecnico')">Limpiar</button>
+                    <input type="text" id="cal_nombreTecnico" class="input-modern mt-2" placeholder="Nombre del técnico">
+                </div>
+                <div>
+                    <label class="label-modern">Firma del Supervisor</label>
+                    <canvas id="cal_firmaSupervisor" class="firma-canvas"></canvas>
+                    <button type="button" class="btn-limpiar-firma" onclick="limpiarFirma('cal_firmaSupervisor')">Limpiar</button>
+                    <input type="text" id="cal_nombreSupervisor" class="input-modern mt-2" placeholder="Nombre del supervisor">
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-8 mb-12 flex flex-wrap justify-center gap-3">
+            <button type="button" onclick="generarYGuardarCalibracion()" class="btn-primary text-lg py-4 px-8 rounded-full shadow-lg" id="btnGuardarCalibracion">
+                <i class="fas fa-save mr-2"></i> GENERAR CERTIFICADO PDF
+            </button>
+            <button type="button" onclick="cancelarCalibracion()" class="btn-secondary text-lg py-4 px-8 rounded-full">
+                <i class="fas fa-times mr-2"></i> Cancelar
+            </button>
+        </div>
+    </form>
+</div>
 <!-- ============================================ -->
 <!-- MODALES Y VISTAS                             -->
 <!-- ============================================ -->
@@ -1072,7 +1188,87 @@
         </tr>
     </table>
 </div>
+<!-- ============================================ -->
+<!-- PLANTILLA PDF CALIBRACIÓN                    -->
+<!-- ============================================ -->
+<div id="pdf-template-calibracion" style="position: absolute; left: -9999px; top: 0; width: 210mm; background: white; padding: 10mm; box-sizing: border-box; font-family: 'Arial', sans-serif; font-size: 10px; color: black;">
+    
+    <table class="pdf-table" style="border-collapse: collapse; width: 100%; border: 1px solid black;">
+        <!-- Encabezado -->
+        <tr>
+            <td colspan="4" style="text-align: center; font-weight: bold; font-size: 14px; padding: 10px; background: #e5e7eb;">
+                CONTROL DE CALIBRACIÓN DE INSTRUMENTOS
+            </td>
+        </tr>
+        
+        <!-- Datos Generales -->
+        <tr>
+            <td style="width: 15%; font-weight: bold;">TAG:</td>
+            <td style="width: 35%;"><span id="cal_pdf_tag"></span></td>
+            <td style="width: 20%; font-weight: bold;">FECHA DE CAL:</td>
+            <td style="width: 30%;"><span id="cal_pdf_fecha"></span></td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold;">GAMA:</td>
+            <td><span id="cal_pdf_gama"></span> <span id="cal_pdf_unidad_gama"></span></td>
+            <td style="font-weight: bold;">PRÓXIMA CAL:</td>
+            <td><span id="cal_pdf_proxima"></span></td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold;">ERROR MAX:</td>
+            <td>± <span id="cal_pdf_error_max"></span></td>
+            <td style="font-weight: bold;">PATRÓN USADO:</td>
+            <td><span id="cal_pdf_patron"></span></td>
+        </tr>
+    </table>
 
+    <!-- Tabla de Datos -->
+    <table class="pdf-table" style="border-collapse: collapse; width: 100%; margin-top: 15px;">
+        <thead>
+            <tr style="background: #e5e7eb; text-align: center; font-weight: bold;">
+                <th rowspan="2" style="border: 1px solid black; padding: 5px; width: 20%;">VALOR GENERADO</th>
+                <th colspan="2" style="border: 1px solid black; padding: 5px; width: 40%;">VALOR OBTENIDO</th>
+                <th rowspan="2" style="border: 1px solid black; padding: 5px; width: 20%;">VALOR ESPERADO<br>(mA)</th>
+                <th rowspan="2" style="border: 1px solid black; padding: 5px; width: 20%;">ERROR<br>(<span class="unidad-error-txt"></span>)</th>
+            </tr>
+            <tr style="background: #e5e7eb; text-align: center; font-weight: bold;">
+                <th style="border: 1px solid black; padding: 5px; width: 20%;">(mA)</th>
+                <th style="border: 1px solid black; padding: 5px; width: 20%;">(<span class="unidad-obtenida-txt"></span>)</th>
+            </tr>
+        </thead>
+        <tbody id="cal_pdf_tabla_datos">
+            <!-- Filas generadas dinámicamente por JS -->
+        </tbody>
+    </table>
+
+    <!-- Observaciones -->
+    <table class="pdf-table" style="border-collapse: collapse; width: 100%; margin-top: 10px;">
+        <tr>
+            <td style="width: 20%; font-weight: bold; padding: 5px;">OBSERVACIONES:</td>
+            <td style="width: 80%; padding: 5px;"><span id="cal_pdf_observaciones"></span></td>
+        </tr>
+        <tr>
+            <td style="font-weight: bold; padding: 5px;">CONFORMIDAD:</td>
+            <td style="padding: 5px;">
+                <span style="display: inline-block; width: 12px; height: 12px; border: 1px solid black; text-align: center; line-height: 12px; margin-right: 5px;" id="cal_pdf_conforme_check"></span> EQUIPO CONFORME
+            </td>
+        </tr>
+    </table>
+
+    <!-- Firmas -->
+    <table class="pdf-table" style="border-collapse: collapse; width: 100%; margin-top: 40px;">
+        <tr>
+            <td style="width: 50%; text-align: center; border: 1px solid black; padding: 10px; height: 60px; vertical-align: bottom;">
+                <div style="font-weight: bold; margin-bottom: 30px;">TÉCNICO</div>
+                <div id="cal_pdf_firma_tecnico" style="font-style: italic; font-size: 9px;"></div>
+            </td>
+            <td style="width: 50%; text-align: center; border: 1px solid black; padding: 10px; height: 60px; vertical-align: bottom;">
+                <div style="font-weight: bold; margin-bottom: 30px;">SUPERVISOR</div>
+                <div id="cal_pdf_firma_supervisor" style="font-style: italic; font-size: 9px;"></div>
+            </td>
+        </tr>
+    </table>
+</div>
 <script>
 // ============================================
 // CONSTANTES Y ESTADO GLOBAL
@@ -3256,7 +3452,143 @@ function dibujarFirma(id, dataUrl) {
     img.onload = () => ctx.drawImage(img, 0, 0, canvas.width / 2, canvas.height / 2);
     img.src = dataUrl;
 }
+// ============================================
+// MÓDULO DE CALIBRACIÓN
+// ============================================
+function abrirFormularioCalibracion() {
+    document.getElementById('calibrationForm').reset();
+    document.getElementById('cal_fecha').valueAsDate = new Date();
+    
+    // Inicializar los canvas de firma
+    setTimeout(() => {
+        inicializarCanvas('cal_firmaTecnico');
+        inicializarCanvas('cal_firmaSupervisor');
+    }, 100);
 
+    ocultarTodas();
+    document.getElementById('vistaCalibracion').classList.remove('hidden-view');
+}
+
+function cancelarCalibracion() {
+    if (confirm('¿Salir sin generar el certificado?')) {
+        mostrarDashboard();
+    }
+}
+
+function calcularErroresCalibracion() {
+    for (let i = 1; i <= 5; i++) {
+        const val_gen = parseFloat(document.getElementById(`cal_gen_${i}`).value);
+        const val_obt = parseFloat(document.getElementById(`cal_obt_uni_${i}`).value);
+        
+        const errorInput = document.getElementById(`cal_err_${i}`);
+        
+        // Según el Excel de referencia: Error = Valor Obtenido (H2O) - Valor Generado (H2O)
+        if (!isNaN(val_gen) && !isNaN(val_obt)) {
+            const error = val_obt - val_gen;
+            // Formatear a 2 decimales
+            errorInput.value = error.toFixed(2);
+        } else {
+            errorInput.value = '';
+        }
+    }
+}
+
+async function generarYGuardarCalibracion() {
+    const tag = document.getElementById('cal_tag').value.trim();
+    if (!tag) {
+        alert('El TAG es obligatorio');
+        return;
+    }
+
+    const btn = document.getElementById('btnGuardarCalibracion');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Generando...';
+
+    try {
+        // 1. Llenar plantilla HTML del PDF
+        document.getElementById('cal_pdf_tag').innerText = tag;
+        document.getElementById('cal_pdf_gama').innerText = document.getElementById('cal_gama').value;
+        document.getElementById('cal_pdf_unidad_gama').innerText = document.getElementById('cal_unidad_gama').value;
+        
+        const fechaVal = document.getElementById('cal_fecha').value;
+        const fechaStr = fechaVal ? new Date(fechaVal + 'T00:00:00').toLocaleDateString('es-CO') : 'N/A';
+        document.getElementById('cal_pdf_fecha').innerText = fechaStr;
+        
+        document.getElementById('cal_pdf_proxima').innerText = document.getElementById('cal_proxima').value;
+        document.getElementById('cal_pdf_patron').innerText = document.getElementById('cal_patron').value;
+        document.getElementById('cal_pdf_error_max').innerText = document.getElementById('cal_error_max').value;
+        document.getElementById('cal_pdf_observaciones').innerText = document.getElementById('cal_observaciones').value;
+        
+        const unidadGama = document.getElementById('cal_unidad_gama').value || 'ud';
+        document.querySelectorAll('.unidad-error-txt').forEach(el => el.innerText = unidadGama);
+        document.querySelectorAll('.unidad-obtenida-txt').forEach(el => el.innerText = unidadGama);
+
+        // Checkbox conforme
+        const conforme = document.getElementById('cal_conforme').checked;
+        document.getElementById('cal_pdf_conforme_check').innerText = conforme ? 'X' : '';
+
+        // Tabla de datos
+        let htmlTabla = '';
+        for (let i = 1; i <= 5; i++) {
+            const gen = document.getElementById(`cal_gen_${i}`).value || '.';
+            const esp = document.getElementById(`cal_esp_${i}`).value || '.';
+            const obtMa = document.getElementById(`cal_obt_ma_${i}`).value || '.';
+            const obtUni = document.getElementById(`cal_obt_uni_${i}`).value || '.';
+            const err = document.getElementById(`cal_err_${i}`).value || '.';
+            
+            htmlTabla += `
+                <tr style="text-align: center;">
+                    <td style="border: 1px solid black; padding: 5px;">${gen}</td>
+                    <td style="border: 1px solid black; padding: 5px;">${esp}</td>
+                    <td style="border: 1px solid black; padding: 5px;">${obtMa}</td>
+                    <td style="border: 1px solid black; padding: 5px;">${obtUni}</td>
+                    <td style="border: 1px solid black; padding: 5px;">${err}</td>
+                </tr>
+            `;
+        }
+        document.getElementById('cal_pdf_tabla_datos').innerHTML = htmlTabla;
+
+        // Firmas
+        const fTec = obtenerFirmaBase64('cal_firmaTecnico');
+        const fSup = obtenerFirmaBase64('cal_firmaSupervisor');
+        
+        document.getElementById('cal_pdf_firma_tecnico').innerHTML = 
+            (fTec ? `<img src="${fTec}" style="max-height: 30px; margin-bottom: 5px;"><br>` : '') + 
+            document.getElementById('cal_nombreTecnico').value;
+            
+        document.getElementById('cal_pdf_firma_supervisor').innerHTML = 
+            (fSup ? `<img src="${fSup}" style="max-height: 30px; margin-bottom: 5px;"><br>` : '') + 
+            document.getElementById('cal_nombreSupervisor').value;
+
+        // 2. Generar PDF con html2canvas y jsPDF
+        const template = document.getElementById('pdf-template-calibracion');
+        const canvas = await html2canvas(template, { scale: 1.5, useCORS: true, backgroundColor: '#ffffff' });
+        const imgData = canvas.toDataURL('image/jpeg', 0.75);
+        
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4', { compress: true });
+        const imgWidth = 210;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        
+        doc.addImage(imgData, 'JPEG', 0, 0, imgWidth, imgHeight);
+        
+        // 3. Descargar y preguntar qué hacer
+        const nombrePDF = `Calibracion_${tag}_${Date.now()}.pdf`;
+        pdfActualBlob = doc.output('blob', { compress: true });
+        pdfActualNombre = nombrePDF;
+        document.getElementById('pdfTitulo').textContent = `Calibración - ${tag}`;
+        
+        mostrarDashboard();
+        document.getElementById('modalOpcionesGuardado').classList.remove('hidden-view');
+
+    } catch (e) {
+        console.error('Error generando calibración:', e);
+        alert('❌ Error: ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save mr-2"></i> GENERAR CERTIFICADO PDF';
+    }
+}
 // ============================================
 // FOTOS (CÁMARA Y GALERÍA)
 // ============================================
