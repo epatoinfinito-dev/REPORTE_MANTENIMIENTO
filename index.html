@@ -1868,7 +1868,8 @@ async function guardarYGenerarPDF() {
         const { doc, setDoc, updateDoc, collection, getDocs, deleteDoc, serverTimestamp } = window.firebaseFns;
         
         const pdfBlob = await generarPDFActual();
-        const nombrePDF = `reporte_${tag}_${Date.now()}.pdf`;
+        const fechaHoy = new Date().toISOString().slice(0,10).replace(/-/g, '');
+        const nombrePDF = `RE_${tag}_${fechaHoy}.pdf`;
         
         const datos = {
             aviso: document.getElementById('aviso').value.trim(),
