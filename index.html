@@ -325,6 +325,9 @@
             <button onclick="cambiarTab('estadisticas')" id="tabEstadisticas" class="px-6 py-3 whitespace-nowrap tab-inactive" style="background:none;border:none;cursor:pointer;">
                 <i class="fas fa-chart-bar mr-2"></i> Estadísticas
             </button>
+            <button onclick="cambiarTab('calibracion')" id="tabCalibracion" class="px-6 py-3 whitespace-nowrap tab-inactive" style="background:none;border:none;cursor:pointer;">
+                <i class="fas fa-gauge-high mr-2"></i> Calibración
+            </button>
             <button onclick="cambiarTab('usuarios')" id="tabUsuarios" class="px-6 py-3 whitespace-nowrap tab-inactive hidden-view" style="background:none;border:none;cursor:pointer;">
                 <i class="fas fa-users mr-2"></i> Usuarios
             </button>
@@ -510,6 +513,21 @@
         </div>
     </div>
 
+    <!-- TAB CALIBRACIÓN -->
+    <div id="contentCalibracion" class="hidden-view">
+        <div class="mb-4 flex flex-wrap gap-3 items-center justify-between">
+            <button onclick="abrirFormularioCalibracion()" class="btn-primary">
+                <i class="fas fa-plus mr-2"></i> Nueva Calibración
+            </button>
+            <span class="text-sm text-gray-600"><span id="contadorCalibraciones">0</span> calibraciones</span>
+        </div>
+        <div id="listaCalibraciones" class="space-y-3"></div>
+        <div id="sinCalibraciones" class="text-center py-12 text-gray-400 hidden-view">
+            <i class="fas fa-gauge-high text-5xl mb-3"></i>
+            <p>No hay calibraciones registradas</p>
+        </div>
+    </div>
+
     <!-- TAB USUARIOS -->
     <div id="contentUsuarios" class="hidden-view">
         <div class="card">
@@ -523,6 +541,111 @@
 </div>
 
 <!-- ============================================ -->
+<!-- VISTA CALIBRACIÓN (formulario)                -->
+<div id="vistaCalibracion" class="hidden-view p-4 md:p-8 max-w-4xl mx-auto">
+
+    <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex items-center justify-between">
+        <div>
+            <h1 class="text-xl font-bold text-gray-800" id="tituloFormCal">🧪 Nueva Calibración</h1>
+            <p class="text-sm text-gray-500">Control de calibración de instrumentos</p>
+        </div>
+        <button onclick="cancelarCalibracion()" class="text-gray-500 hover:text-gray-700 p-2" style="background:none;border:none;cursor:pointer;" aria-label="Volver">
+            <i class="fas fa-arrow-left text-xl"></i> Volver
+        </button>
+    </div>
+
+    <form id="calForm" class="space-y-6" onsubmit="event.preventDefault(); guardarCalibracion();">
+
+        <div class="card">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-tag text-blue-500 mr-2"></i>Identificación del Instrumento</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="calTag" class="label-modern">TAG del instrumento *</label>
+                    <input type="text" id="calTag" class="input-modern" placeholder="Ej: PDIT0X07">
+                </div>
+                <div>
+                    <label for="calFecha" class="label-modern">Fecha de calibración *</label>
+                    <input type="date" id="calFecha" class="input-modern">
+                </div>
+                <div>
+                    <label for="calLrv" class="label-modern">Gama mínima (inH2O) *</label>
+                    <input type="number" step="any" id="calLrv" class="input-modern" placeholder="Ej: 0" oninput="recalcularCalibracion()">
+                </div>
+                <div>
+                    <label for="calUrv" class="label-modern">Gama máxima (inH2O) *</label>
+                    <input type="number" step="any" id="calUrv" class="input-modern" placeholder="Ej: 1000" oninput="recalcularCalibracion()">
+                </div>
+                <div>
+                    <label for="calErrorMax" class="label-modern">Error máximo ± (inH2O) *</label>
+                    <input type="number" step="any" min="0" id="calErrorMax" class="input-modern" oninput="recalcularCalibracion()">
+                </div>
+                <div>
+                    <label for="calProxima" class="label-modern">Próxima calibración</label>
+                    <input type="text" id="calProxima" class="input-modern" placeholder="Ej: MTTO">
+                </div>
+                <div>
+                    <label for="calPatron" class="label-modern">Patrón usado</label>
+                    <input type="text" id="calPatron" class="input-modern" placeholder="Ej: PG08/MM08">
+                </div>
+                <div></div>
+                <div>
+                    <label for="calTecnico" class="label-modern">Técnico</label>
+                    <input type="text" id="calTecnico" class="input-modern">
+                </div>
+                <div>
+                    <label for="calSupervisor" class="label-modern">Supervisor</label>
+                    <input type="text" id="calSupervisor" class="input-modern">
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-table text-blue-500 mr-2"></i>Puntos de Calibración</h2>
+            <p class="text-xs text-gray-500 mb-3">
+                Esperado (mA) = 4 + 16 × (generado − gama mín.) / (gama máx. − gama mín.).
+                Error = obtenido (inH2O) − generado. Completa las 3 columnas de cada punto o deja la fila vacía.
+            </p>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm" style="min-width: 640px;">
+                    <thead class="bg-gray-50 text-xs text-gray-600 uppercase">
+                        <tr>
+                            <th class="px-2 py-2 text-center" style="width: 40px;">#</th>
+                            <th class="px-2 py-2 text-center">Generado (inH2O)</th>
+                            <th class="px-2 py-2 text-center">Esperado (mA)</th>
+                            <th class="px-2 py-2 text-center">Obtenido (mA)</th>
+                            <th class="px-2 py-2 text-center">Obtenido (inH2O)</th>
+                            <th class="px-2 py-2 text-center">Error (inH2O)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="calTablaBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 class="text-xl font-semibold text-gray-700 mb-4 border-b pb-2"><i class="fas fa-check-circle text-blue-500 mr-2"></i>Resultado y Cierre</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="md:col-span-2">
+                    <label for="calObservaciones" class="label-modern">Observaciones (opcional)</label>
+                    <input type="text" id="calObservaciones" class="input-modern" placeholder="Si lo dejas vacío, se indica si el equipo está conforme">
+                </div>
+            </div>
+            <div class="mt-4 text-sm">Resultado: <span id="calConformidad" class="text-gray-500">—</span></div>
+        </div>
+
+        <div id="calError" class="text-red-600 text-sm hidden-view"></div>
+
+        <div class="text-center mt-8 mb-12 flex flex-wrap justify-center gap-3">
+            <button type="submit" class="btn-primary text-lg py-4 px-8 rounded-full shadow-lg" id="btnGuardarCal">
+                <i class="fas fa-file-pdf mr-2"></i> GUARDAR Y GENERAR PDF
+            </button>
+            <button type="button" onclick="cancelarCalibracion()" class="btn-secondary text-lg py-4 px-8 rounded-full">
+                <i class="fas fa-times mr-2"></i> Cancelar
+            </button>
+        </div>
+    </form>
+</div>
+
 <!-- VISTA FORMULARIO                             -->
 <!-- ============================================ -->
 <div id="vistaFormulario" class="hidden-view p-4 md:p-8 max-w-4xl mx-auto">
@@ -1404,6 +1527,7 @@ function ocultarTodas() {
     document.getElementById('vistaLogin').classList.add('hidden-view');
     document.getElementById('vistaDashboard').classList.add('hidden-view');
     document.getElementById('vistaFormulario').classList.add('hidden-view');
+    document.getElementById('vistaCalibracion').classList.add('hidden-view');
 }
 
 function mostrarLogin() {
@@ -1437,7 +1561,7 @@ function mostrarDashboard() {
 }
 
 function cambiarTab(tab) {
-    ['reportes', 'inventario', 'estadisticas', 'usuarios'].forEach(t => {
+    ['reportes', 'inventario', 'estadisticas', 'calibracion', 'usuarios'].forEach(t => {
         const content = document.getElementById('content' + t.charAt(0).toUpperCase() + t.slice(1));
         const tabBtn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
         if (!content || !tabBtn) return;
@@ -1450,6 +1574,7 @@ function cambiarTab(tab) {
     if (tab === 'estadisticas') calcularEstadisticas();
     if (tab === 'usuarios') cargarUsuarios();
     if (tab === 'inventario') cargarInventario();
+    if (tab === 'calibracion') cargarCalibraciones();
 }
 
 function cancelarFormulario() {
@@ -2187,6 +2312,724 @@ async function enviarPDFPorCorreo() {
 // ============================================
 // VISOR DE PDF
 // ============================================
+// ============================================
+// MÓDULO CALIBRACIÓN
+// ============================================
+const CAL_MAX_PUNTOS = 11;
+const CAL_MESES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+let calibracionesCache = [];
+let calEditando = null;
+
+function numCal(v) {
+    const t = String(v ?? '').trim().replace(',', '.');
+    if (t === '') return null;
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+}
+
+function f2(v) {
+    if (v === null || v === undefined || !Number.isFinite(Number(v))) return '';
+    return Number(v).toFixed(2);
+}
+
+function hoyISO() {
+    const d = new Date();
+    const p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
+// "2026-10-22" -> "22-Oct-26" (mismo formato de la referencia)
+function fechaCalTexto(iso) {
+    if (!iso) return '';
+    const [y, m, d] = iso.split('-');
+    return `${d}-${CAL_MESES[parseInt(m, 10) - 1]}-${y.slice(2)}`;
+}
+
+// Salida 4–20 mA lineal sobre la gama
+function esperadoMA(gen, lrv, urv) {
+    return 4 + 16 * (gen - lrv) / (urv - lrv);
+}
+
+function nombreArchivoCal(d) {
+    const tagSeguro = String(d.tag || 'SIN_TAG').replace(/[^A-Za-z0-9_-]/g, '_');
+    const fecha = (d.fecha || '').replace(/-/g, '') || fechaLocalYYYYMMDD();
+    return `CAL_${tagSeguro}_${fecha}.pdf`;
+}
+
+function construirTablaCalibracion(puntos = []) {
+    const tbody = document.getElementById('calTablaBody');
+    const campo = (k, v, label) =>
+        `<input type="number" step="any" inputmode="decimal" class="input-modern" style="padding: 8px;" data-k="${k}" value="${v ?? ''}" oninput="recalcularCalibracion()" aria-label="${label}">`;
+
+    tbody.innerHTML = Array.from({ length: CAL_MAX_PUNTOS }, (_, i) => {
+        const p = puntos[i] || {};
+        return `
+        <tr class="border-b">
+            <td class="px-2 py-2 text-center text-xs text-gray-400">${i + 1}</td>
+            <td class="px-2 py-2">${campo('generado', p.generado, `Valor generado, punto ${i + 1}`)}</td>
+            <td class="px-2 py-2 text-center"><span class="cal-esp">--</span></td>
+            <td class="px-2 py-2">${campo('obtenidoMA', p.obtenidoMA, `Valor obtenido en mA, punto ${i + 1}`)}</td>
+            <td class="px-2 py-2">${campo('obtenidoPresion', p.obtenidoPresion, `Valor obtenido en inH2O, punto ${i + 1}`)}</td>
+            <td class="px-2 py-2 text-center"><span class="cal-err">--</span></td>
+        </tr>`;
+    }).join('');
+    recalcularCalibracion();
+}
+
+// Actualiza esperado, error y resultado en vivo mientras el técnico escribe.
+function recalcularCalibracion() {
+    const lrv = numCal(val('calLrv'));
+    const urv = numCal(val('calUrv'));
+    const emax = numCal(val('calErrorMax'));
+    const gamaOk = lrv !== null && urv !== null && urv > lrv;
+    let hayDatos = false;
+    let conforme = true;
+
+    document.querySelectorAll('#calTablaBody tr').forEach(tr => {
+        const gen = numCal(tr.querySelector('[data-k="generado"]').value);
+        const obs = numCal(tr.querySelector('[data-k="obtenidoPresion"]').value);
+
+        tr.querySelector('.cal-esp').textContent = (gen !== null && gamaOk) ? esperadoMA(gen, lrv, urv).toFixed(2) : '--';
+
+        const errEl = tr.querySelector('.cal-err');
+        if (gen === null || obs === null) {
+            errEl.textContent = '--';
+            errEl.className = 'cal-err';
+            return;
+        }
+        const err = obs - gen;
+        const fuera = emax === null || Math.abs(err) > emax;
+        hayDatos = true;
+        if (fuera) conforme = false;
+        errEl.textContent = err.toFixed(2);
+        errEl.className = 'cal-err font-semibold ' + (fuera ? 'text-red-600' : 'text-gray-800');
+    });
+
+    const out = document.getElementById('calConformidad');
+    if (!hayDatos) {
+        out.textContent = '—';
+        out.className = 'text-gray-500';
+    } else {
+        out.textContent = conforme ? 'EQUIPO EN CONFORME' : 'EQUIPO NO CONFORME';
+        out.className = conforme ? 'text-green-700 font-bold' : 'text-red-600 font-bold';
+    }
+}
+
+// Lee y valida el formulario. Devuelve { errores, datos }.
+function leerCalibracion() {
+    const errores = [];
+    const tag = val('calTag').toUpperCase();
+    const lrv = numCal(val('calLrv'));
+    const urv = numCal(val('calUrv'));
+    const emax = numCal(val('calErrorMax'));
+    const fecha = val('calFecha');
+    const gamaOk = lrv !== null && urv !== null && urv > lrv;
+
+    if (!tag) errores.push('Ingresa el TAG del instrumento');
+    if (lrv === null || urv === null) errores.push('Completa la gama mínima y máxima');
+    else if (urv <= lrv) errores.push('La gama máxima debe ser mayor que la mínima');
+    if (emax === null || emax <= 0) errores.push('El error máximo debe ser mayor a 0');
+    if (!fecha) errores.push('Selecciona la fecha de calibración');
+
+    const puntos = [];
+    document.querySelectorAll('#calTablaBody tr').forEach((tr, i) => {
+        const campos = ['generado', 'obtenidoMA', 'obtenidoPresion'].map(k => tr.querySelector(`[data-k="${k}"]`).value.trim());
+        const vacios = campos.filter(c => c === '').length;
+        if (vacios === 3) return; // fila no usada
+        if (vacios > 0) {
+            errores.push(`Punto ${i + 1}: completa los 3 valores o deja la fila vacía`);
+            return;
+        }
+        const gen = numCal(campos[0]);
+        const mA = numCal(campos[1]);
+        const obs = numCal(campos[2]);
+        if (gen === null || mA === null || obs === null) {
+            errores.push(`Punto ${i + 1}: valores no válidos`);
+            return;
+        }
+        if (gamaOk && (gen < lrv || gen > urv)) {
+            errores.push(`Punto ${i + 1}: el valor generado está fuera de la gama`);
+            return;
+        }
+        puntos.push({
+            generado: gen,
+            esperado: gamaOk ? esperadoMA(gen, lrv, urv) : null,
+            obtenidoMA: mA,
+            obtenidoPresion: obs,
+            error: obs - gen
+        });
+    });
+
+    if (puntos.length === 0) errores.push('Ingresa al menos un punto de calibración');
+
+    const conforme = emax !== null && puntos.length > 0 && puntos.every(p => Math.abs(p.error) <= emax);
+
+    return {
+        errores,
+        datos: {
+            tag,
+            lrv,
+            urv,
+            errorMax: emax,
+            fecha,
+            proximaCal: val('calProxima') || 'MTTO',
+            patron: val('calPatron'),
+            tecnicoNombre: val('calTecnico'),
+            supervisorNombre: val('calSupervisor'),
+            observaciones: val('calObservaciones'),
+            puntos,
+            conforme
+        }
+    };
+}
+
+function abrirFormularioCalibracion(id = null) {
+    const r = id ? calibracionesCache.find(c => c.id === id) : null;
+    if (id && !r) return;
+    calEditando = id;
+
+    document.getElementById('tituloFormCal').textContent = r ? '✏️ Editar Calibración' : '🧪 Nueva Calibración';
+    const set = (el, v) => { document.getElementById(el).value = v ?? ''; };
+    set('calTag', r?.tag);
+    set('calFecha', r?.fecha || hoyISO());
+    set('calLrv', r ? r.lrv : '');
+    set('calUrv', r ? r.urv : '');
+    set('calErrorMax', r ? r.errorMax : 0.5);
+    set('calProxima', r ? r.proximaCal : 'MTTO');
+    set('calPatron', r?.patron);
+    set('calTecnico', r ? r.tecnicoNombre : (usuarioActual.nombre || ''));
+    set('calSupervisor', r?.supervisorNombre);
+    set('calObservaciones', r?.observaciones);
+    document.getElementById('calError').classList.add('hidden-view');
+
+    construirTablaCalibracion(r?.puntos || []);
+
+    ocultarTodas();
+    document.getElementById('vistaCalibracion').classList.remove('hidden-view');
+    window.scrollTo(0, 0);
+}
+
+function cancelarCalibracion() {
+    if (!confirm('¿Salir? Los cambios no guardados se perderán.')) return;
+    calEditando = null;
+    mostrarDashboard();
+    cambiarTab('calibracion');
+}
+
+async function guardarCalibracion() {
+    if (!usuarioActual) return;
+    const { errores, datos } = leerCalibracion();
+    const errEl = document.getElementById('calError');
+    if (errores.length) {
+        errEl.innerHTML = errores.map(e => '• ' + esc(e)).join('<br>');
+        errEl.classList.remove('hidden-view');
+        return;
+    }
+    errEl.classList.add('hidden-view');
+
+    const btn = document.getElementById('btnGuardarCal');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> Guardando...';
+
+    try {
+        const { doc, setDoc, updateDoc, collection, serverTimestamp } = window.firebaseFns;
+        const db = window.firebaseDB;
+        if (calEditando) {
+            await updateDoc(doc(db, 'calibraciones', calEditando), {
+                ...datos,
+                fechaModificacion: serverTimestamp(),
+                modificadoPor: usuarioActual.uid
+            });
+        } else {
+            await setDoc(doc(collection(db, 'calibraciones')), {
+                ...datos,
+                autor: usuarioActual.uid,
+                autorNombre: usuarioActual.nombre || usuarioActual.email,
+                fechaCreacion: serverTimestamp()
+            });
+        }
+    } catch (e) {
+        toast('Error al guardar: ' + mensajeError(e), 'error', 6000);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-file-pdf mr-2"></i> GUARDAR Y GENERAR PDF';
+        return;
+    }
+
+    // La calibración ya está guardada; ahora se genera el PDF.
+    try {
+        pdfActualBlob = await generarPDFCalibracion(datos);
+        pdfActualNombre = nombreArchivoCal(datos);
+        document.getElementById('pdfTitulo').textContent = `Calibración ${datos.tag}`;
+        calEditando = null;
+        mostrarDashboard();
+        cambiarTab('calibracion');
+        document.getElementById('modalOpcionesGuardado').classList.remove('hidden-view');
+    } catch (e) {
+        calEditando = null;
+        mostrarDashboard();
+        cambiarTab('calibracion');
+        toast('La calibración se guardó, pero el PDF falló: ' + mensajeError(e), 'error', 6000);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-file-pdf mr-2"></i> GUARDAR Y GENERAR PDF';
+    }
+}
+
+async function cargarCalibraciones() {
+    try {
+        const { collection, getDocs, query, orderBy, limit } = window.firebaseFns;
+        const snap = await getDocs(query(collection(window.firebaseDB, 'calibraciones'), orderBy('fechaCreacion', 'desc'), limit(300)));
+        calibracionesCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (e) {
+        toast('Error cargando calibraciones: ' + mensajeError(e), 'error');
+        return;
+    }
+    renderizarCalibraciones();
+}
+
+function renderizarCalibraciones() {
+    const cont = document.getElementById('listaCalibraciones');
+    const vacio = document.getElementById('sinCalibraciones');
+    document.getElementById('contadorCalibraciones').textContent = calibracionesCache.length;
+
+    if (calibracionesCache.length === 0) {
+        cont.innerHTML = '';
+        vacio.classList.remove('hidden-view');
+        return;
+    }
+    vacio.classList.add('hidden-view');
+
+    cont.innerHTML = calibracionesCache.map(c => {
+        const id = esc(c.id);
+        const puedeEditar = c.autor === usuarioActual.uid || ['supervisor', 'admin'].includes(usuarioActual.rol);
+        const puedeEliminar = usuarioActual.rol === 'admin';
+        return `
+        <div class="reporte-card ${c.conforme ? '' : 'critico'}">
+            <div class="flex flex-wrap items-start justify-between gap-2">
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                        <span class="font-bold text-blue-800">${esc(c.tag || 'S/T')}</span>
+                        <span class="text-gray-400">•</span>
+                        <span class="text-xs text-gray-500">${esc(fechaCalTexto(c.fecha))}</span>
+                        <span class="text-xs px-2 py-0.5 rounded ${c.conforme ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${c.conforme ? 'CONFORME' : 'NO CONFORME'}</span>
+                    </div>
+                    <div class="text-sm text-gray-700">Gama ${esc(c.lrv)} – ${esc(c.urv)} inH2O · Error máx. ±${esc(f2(c.errorMax))} inH2O · ${(c.puntos || []).length} puntos</div>
+                    <div class="text-xs text-gray-500 mt-1"><i class="fas fa-user"></i> ${esc(c.tecnicoNombre || c.autorNombre || '')}</div>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                    <button onclick="verPDFCalibracion('${id}')" class="btn-primary" style="padding: 6px 12px; font-size: 0.8rem;">
+                        <i class="fas fa-eye"></i> Ver PDF
+                    </button>
+                    ${puedeEditar ? `<button onclick="abrirFormularioCalibracion('${id}')" class="btn-warning" aria-label="Editar calibración"><i class="fas fa-edit"></i></button>` : ''}
+                    ${puedeEliminar ? `<button onclick="eliminarCalibracion('${id}')" class="btn-danger" aria-label="Eliminar calibración"><i class="fas fa-trash"></i></button>` : ''}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function verPDFCalibracion(id) {
+    const c = calibracionesCache.find(x => x.id === id);
+    if (!c) return;
+    document.getElementById('modalPDF').classList.remove('hidden-view');
+    const container = document.getElementById('pdfViewerContainer');
+    container.innerHTML = '<div class="text-center py-8"><i class="fas fa-spinner fa-spin text-blue-600 text-3xl"></i><p class="text-gray-600 mt-2">Generando PDF...</p></div>';
+    try {
+        pdfActualBlob = await generarPDFCalibracion(c);
+        pdfActualNombre = nombreArchivoCal(c);
+        document.getElementById('pdfTitulo').textContent = `Calibración ${c.tag}`;
+        await pintarVisorPDF(pdfActualBlob, container);
+    } catch (e) {
+        cerrarModalPDF();
+        toast('Error al generar PDF: ' + mensajeError(e), 'error', 5000);
+    }
+}
+
+async function pintarVisorPDF(blob, container) {
+    const pdf = await pdfjsLib.getDocument({ data: await blob.arrayBuffer() }).promise;
+    container.innerHTML = '';
+    for (let n = 1; n <= pdf.numPages; n++) {
+        const page = await pdf.getPage(n);
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        canvas.className = 'shadow-lg bg-white max-w-full h-auto mb-4 border border-gray-300';
+        container.appendChild(canvas);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+    }
+}
+
+async function eliminarCalibracion(id) {
+    if (usuarioActual.rol !== 'admin') {
+        toast('Solo los administradores pueden eliminar calibraciones', 'warn');
+        return;
+    }
+    if (!confirm('⚠️ ¿Eliminar esta calibración permanentemente?')) return;
+    try {
+        const { doc, deleteDoc } = window.firebaseFns;
+        await deleteDoc(doc(window.firebaseDB, 'calibraciones', id));
+        toast('Calibración eliminada');
+        cargarCalibraciones();
+    } catch (e) {
+        toast('Error: ' + mensajeError(e), 'error');
+    }
+}
+
+// ----- PDF de calibración (formato Letter, igual a la referencia) -----
+
+function cargarImagen(src) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = () => resolve(null);
+        img.src = src;
+    });
+}
+
+// Escala "bonita" tipo Excel: pasos 1, 2, 2.5, 5 × 10^n
+const PASOS_NICE = [1, 2, 2.5, 5, 10];
+function pasoNice(rango, divisiones) {
+    const crudo = rango / divisiones;
+    const mag = Math.pow(10, Math.floor(Math.log10(crudo)));
+    const m = PASOS_NICE.find(p => p * mag >= crudo) ?? 10;
+    return m * mag;
+}
+
+function escalaAuto(minD, maxD) {
+    let rango = maxD - minD;
+    if (rango <= 0) rango = Math.max(Math.abs(maxD), 1);
+    const pad = rango * 0.05;
+    const lo = minD >= 0 ? 0 : minD - pad;
+    const hi = maxD + pad;
+    const step = pasoNice(hi - lo, 7);
+    return {
+        min: Math.floor(lo / step + 1e-9) * step,
+        max: Math.ceil(hi / step - 1e-9) * step,
+        step
+    };
+}
+
+function listaTicks(e) {
+    const n = Math.round((e.max - e.min) / e.step);
+    return Array.from({ length: n + 1 }, (_, i) => +(e.min + i * e.step).toFixed(6));
+}
+
+function regresionLineal(xs, ys) {
+    const n = xs.length;
+    if (n < 2) return null;
+    const mx = xs.reduce((a, b) => a + b, 0) / n;
+    const my = ys.reduce((a, b) => a + b, 0) / n;
+    let num = 0, den = 0;
+    for (let i = 0; i < n; i++) {
+        num += (xs[i] - mx) * (ys[i] - my);
+        den += (xs[i] - mx) ** 2;
+    }
+    if (den === 0) return null;
+    const b = num / den;
+    return { a: my - b * mx, b };
+}
+
+// Dibuja una gráfica en canvas con el estilo oscuro de la referencia y devuelve PNG.
+function dibujarGrafica(W, H, cfg) {
+    const c = document.createElement('canvas');
+    c.width = W;
+    c.height = H;
+    const ctx = c.getContext('2d');
+
+    const g = ctx.createRadialGradient(W * 0.5, H * 0.4, 0, W * 0.5, H * 0.4, Math.max(W, H) * 0.7);
+    g.addColorStop(0, '#4d4d4d');
+    g.addColorStop(1, '#1e1e1e');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, H);
+
+    const L = cfg.plot.l * W, R = cfg.plot.r * W, T = cfg.plot.t * H, B = cfg.plot.b * H;
+    const fx = v => L + (v - cfg.x.min) / (cfg.x.max - cfg.x.min) * (R - L);
+    const fy = v => B - (v - cfg.y.min) / (cfg.y.max - cfg.y.min) * (B - T);
+    const fuente = (f, negrita = false) => (negrita ? 'bold ' : '') + Math.round(H * f) + 'px Arial';
+
+    // Título
+    ctx.fillStyle = '#f2f2f2';
+    ctx.font = fuente(0.05, true);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(cfg.titulo, W / 2, H * cfg.plot.tituloY);
+
+    // Cuadrícula
+    ctx.strokeStyle = 'rgba(255,255,255,0.22)';
+    ctx.lineWidth = 2;
+    listaTicks(cfg.x).forEach(v => { ctx.beginPath(); ctx.moveTo(fx(v), T); ctx.lineTo(fx(v), B); ctx.stroke(); });
+    listaTicks(cfg.y).forEach(v => { ctx.beginPath(); ctx.moveTo(L, fy(v)); ctx.lineTo(R, fy(v)); ctx.stroke(); });
+
+    // Ejes: cruzan en 0 cuando el 0 está dentro del rango
+    const yEje = (cfg.y.min <= 0 && cfg.y.max >= 0) ? fy(0) : B;
+    const xEje = (cfg.x.min <= 0 && cfg.x.max >= 0) ? fx(0) : L;
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(L, yEje); ctx.lineTo(R, yEje);
+    ctx.moveTo(xEje, T); ctx.lineTo(xEje, B);
+    ctx.stroke();
+
+    // Etiquetas de ejes
+    ctx.fillStyle = '#d9d9d9';
+    ctx.font = fuente(0.03);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    listaTicks(cfg.x).forEach(v => ctx.fillText(v.toFixed(2), fx(v), yEje + H * 0.008));
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+    listaTicks(cfg.y).forEach(v => ctx.fillText(v.toFixed(2), xEje - W * 0.006, fy(v)));
+
+    // Títulos de ejes (solo si se definen)
+    if (cfg.xTitulo) {
+        ctx.font = fuente(0.03, true);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(cfg.xTitulo, (L + R) / 2, H * cfg.plot.xTituloY);
+    }
+    if (cfg.yTitulo) {
+        ctx.save();
+        ctx.font = fuente(0.03, true);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.translate(W * 0.038, (T + B) / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(cfg.yTitulo, 0, 0);
+        ctx.restore();
+    }
+
+    cfg.datos(ctx, fx, fy);
+    return c.toDataURL('image/png');
+}
+
+// Gráfica CURVA: mA (eje Y) contra inH2O obtenido (eje X)
+function graficaCurvaPNG(d) {
+    const pts = d.puntos;
+    const xs = pts.map(p => p.obtenidoPresion);
+    const W = 2000;
+    const H = Math.round(W * 96.6 / 167);
+    return dibujarGrafica(W, H, {
+        titulo: 'CURVA',
+        x: escalaAuto(Math.min(...xs), Math.max(...xs)),
+        y: { min: 4, max: 20, step: 2 },
+        xTitulo: 'inH2O',
+        yTitulo: 'mA',
+        plot: { l: 0.099, r: 0.952, t: 0.162, b: 0.847, tituloY: 0.077, xTituloY: 0.934 },
+        datos: (ctx, fx, fy) => {
+            ctx.strokeStyle = '#c3cf3c';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            pts.forEach((p, i) => {
+                const x = fx(p.obtenidoPresion), y = fy(p.obtenidoMA);
+                if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+        }
+    });
+}
+
+// Gráfica ERROR: error por punto, líneas de límite ±error máximo y tendencia punteada
+function graficaErrorPNG(d) {
+    const pts = d.puntos;
+    const xs = pts.map(p => p.generado);
+    const errs = pts.map(p => p.error);
+    const emax = Number(d.errorMax) || 0;
+    const xMin = Math.min(...xs), xMax = Math.max(...xs);
+    const W = 2000;
+    const H = Math.round(W * 82 / 166.5);
+    return dibujarGrafica(W, H, {
+        titulo: 'ERROR',
+        x: escalaAuto(xMin, xMax),
+        y: escalaAuto(Math.min(...errs, -emax), Math.max(...errs, emax)),
+        plot: { l: 0.075, r: 0.952, t: 0.182, b: 0.959, tituloY: 0.086 },
+        datos: (ctx, fx, fy) => {
+            ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+            ctx.lineWidth = 2;
+            [emax, -emax].forEach(y => {
+                ctx.beginPath();
+                ctx.moveTo(fx(xMin), fy(y));
+                ctx.lineTo(fx(xMax), fy(y));
+                ctx.stroke();
+            });
+
+            const reg = regresionLineal(xs, errs);
+            if (reg) {
+                ctx.save();
+                ctx.setLineDash([16, 10]);
+                ctx.strokeStyle = '#4a86d8';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(fx(xMin), fy(reg.a + reg.b * xMin));
+                ctx.lineTo(fx(xMax), fy(reg.a + reg.b * xMax));
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            ctx.fillStyle = '#4a86d8';
+            xs.forEach((x, i) => {
+                ctx.beginPath();
+                ctx.arc(fx(x), fy(errs[i]), 9, 0, Math.PI * 2);
+                ctx.fill();
+            });
+        }
+    });
+}
+
+async function generarPDFCalibracion(d) {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF('p', 'mm', 'letter');
+    const puntos = d.puntos || [];
+    const tag = String(d.tag || '').toUpperCase();
+
+    pdf.setDrawColor(0);
+    pdf.setTextColor(0);
+
+    // ---------- PÁGINA 1: FORMATO DE CONTROL ----------
+    pdf.setLineWidth(0.6);
+    pdf.rect(23.6, 9.8, 174.6, 254.7);
+
+    const logo = await cargarImagen('logo.jpg');
+    if (logo && logo.naturalWidth) {
+        const w = 69.8;
+        const h = w * logo.naturalHeight / logo.naturalWidth;
+        pdf.addImage(logo, 'JPEG', 31.8, 41.7 - h / 2, w, h);
+    }
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(14);
+    pdf.text('CONTROL DE CALIBRACIÓN', 147.9, 38.8, { align: 'center' });
+    pdf.text('DE INSTRUMENTOS', 147.9, 45.9, { align: 'center' });
+
+    const rotulo = (t, xDer, y) => {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(9);
+        pdf.text(t, xDer, y, { align: 'right' });
+    };
+    const valorC = (t, xc, y) => {
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+        pdf.text(String(t ?? ''), xc, y, { align: 'center' });
+    };
+    const subrayado = (x1, x2, y) => { pdf.setLineWidth(0.3); pdf.line(x1, y, x2, y); };
+
+    // Columna izquierda
+    rotulo('TAG:', 63.3, 72.4);
+    valorC(tag, 81.0, 72.2);
+    subrayado(63.7, 98.2, 73.6);
+
+    rotulo('GAMA:', 63.3, 81.9);
+    valorC(`${d.lrv} - ${d.urv}`, 81.0, 79.6);
+    subrayado(63.7, 98.2, 83.0);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
+    pdf.text('INH2O', 98.4, 81.9);
+
+    rotulo('ERROR MAX :', 58.6, 86.9);
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(9);
+    pdf.text('±', 59.6, 86.9);
+    valorC(f2(d.errorMax), 81.0, 86.0);
+    subrayado(63.7, 98.2, 87.6);
+
+    // Columna derecha
+    rotulo('FECHA DE CAL:', 160.3, 72.4);
+    valorC(fechaCalTexto(d.fecha), 175.5, 72.2);
+    subrayado(160.8, 190.1, 73.6);
+
+    rotulo('PRÓXIMA CAL:', 160.3, 81.9);
+    valorC(d.proximaCal || 'MTTO', 175.5, 81.7);
+    subrayado(160.8, 190.1, 83.0);
+
+    rotulo('PATRÓN USADO:', 160.3, 86.9);
+    valorC(d.patron || '', 175.5, 86.7);
+    subrayado(160.8, 190.1, 87.6);
+
+    // Tabla
+    const X = [31.8, 63.7, 98.2, 126.6, 160.8, 190.1];
+    const Y0 = 110.7, YH = 120.0, YU = 126.1, Y1 = 192.1;
+    const altoFila = (Y1 - YU) / CAL_MAX_PUNTOS;
+    const centro = i => (X[i] + X[i + 1]) / 2;
+
+    pdf.setLineWidth(0.6);
+    pdf.rect(X[0], Y0, X[5] - X[0], Y1 - Y0);
+    pdf.setLineWidth(0.2);
+    for (let i = 1; i < 5; i++) pdf.line(X[i], Y0, X[i], Y1);
+    pdf.line(X[0], YH, X[5], YH);
+    pdf.line(X[0], YU, X[5], YU);
+    for (let i = 1; i < CAL_MAX_PUNTOS; i++) {
+        const y = YU + i * altoFila;
+        pdf.line(X[0], y, X[5], y);
+    }
+
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8);
+    pdf.text(['VALOR', 'GENERADO'], centro(0), 113.9, { align: 'center' });
+    pdf.text(['VALOR', 'ESPERADO'], centro(1), 113.9, { align: 'center' });
+    pdf.text(['VALOR', 'OBTENIDO'], centro(2), 113.9, { align: 'center' });
+    pdf.text('VALOR OBTENIDO', centro(3), 116.4, { align: 'center' });
+    pdf.text('ERROR', centro(4), 116.4, { align: 'center' });
+
+    const unidad = (i, txt) => {
+        const x = X[i] + 0.8;
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(6.5);
+        pdf.text('UNID:', x, 124.6);
+        const w = pdf.getTextWidth('UNID:  ');
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(7.5);
+        pdf.text(txt, x + w, 124.6);
+    };
+    unidad(0, '"H2O');
+    unidad(1, 'mA');
+    unidad(2, 'mA');
+    unidad(3, '"H2O');
+    unidad(4, '"H2O');
+
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    for (let i = 0; i < CAL_MAX_PUNTOS; i++) {
+        const p = puntos[i];
+        if (!p) continue;
+        const yc = YU + i * altoFila + altoFila / 2 + 1.2;
+        const esperado = p.esperado ?? esperadoMA(p.generado, d.lrv, d.urv);
+        const error = p.error ?? (p.obtenidoPresion - p.generado);
+        [p.generado, esperado, p.obtenidoMA, p.obtenidoPresion, error]
+            .forEach((v, k) => pdf.text(f2(v), centro(k), yc, { align: 'center' }));
+    }
+
+    // Observaciones y firmas
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(7.5);
+    pdf.text('OBSERVACIONES:', 31.8, 209.4);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.text(d.observaciones || (d.conforme ? 'EQUIPO EN CONFORME' : 'EQUIPO NO CONFORME'), 64.2, 208.6);
+    pdf.setLineWidth(0.25);
+    pdf.line(63.7, 210.4, 190.1, 210.4);
+    pdf.setLineWidth(0.6);
+    [214.8, 220.2, 225.7].forEach(y => pdf.line(31.8, y, 190.1, y));
+
+    pdf.setLineWidth(0.25);
+    pdf.line(31.8, 247.7, 81.0, 247.7);
+    pdf.line(126.6, 247.7, 190.1, 247.7);
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(9);
+    pdf.text(String(d.tecnicoNombre || '').toUpperCase(), 56.4, 246.2, { align: 'center' });
+    pdf.text(String(d.supervisorNombre || '').toUpperCase(), 158.4, 246.2, { align: 'center' });
+    pdf.setFont('helvetica', 'bold');
+    pdf.setFontSize(8);
+    pdf.text('TÉCNICO', 56.4, 256.0, { align: 'center' });
+    pdf.text('SUPERVISOR', 158.4, 256.0, { align: 'center' });
+
+    // ---------- PÁGINA 2: GRÁFICAS ----------
+    pdf.addPage('letter', 'p');
+    pdf.addImage(graficaCurvaPNG(d), 'PNG', 26.5, 13.2, 167, 96.6);
+    pdf.addImage(graficaErrorPNG(d), 'PNG', 26.8, 115.2, 166.5, 82);
+
+    return pdf.output('blob');
+}
+
 async function verPDF(id) {
     try {
         const { doc, getDoc, collection, getDocs, query, orderBy } = window.firebaseFns;
