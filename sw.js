@@ -1,4 +1,4 @@
-const CACHE_NAME = 'reportes-instrumentos-v25';
+const CACHE_NAME = 'reportes-instrumentos-v26';
 const APP_SHELL = ['./', './index.html', './manifest.json', './logo.jpg'];
 
 // Servicios de datos en vivo: nunca se interceptan ni se guardan.
